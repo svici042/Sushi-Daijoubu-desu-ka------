@@ -29,12 +29,19 @@ Norwegian Bokmål will be the default language.
 - Node.js
 - Express
 - HTML, CSS, JavaScript
-- EJS (planned)
+- EJS
 - Database (not decided yet)
 
 ## Installation
 
-Not available yet. The project is still in the planning stage.
+Install Node.js, then run these commands in the project folder:
+
+```sh
+npm ci
+npm run dev
+```
+
+Open http://localhost:3000/ in your browser.
 
 ## Documentation
 
@@ -43,6 +50,4 @@ Not available yet. The project is still in the planning stage.
 
 ## Status
 
-Planning and design.
-
-Development will start with the Express setup and basic pages.
+Express and EJS are set up. The home page works, and the menu page has temporary example dishes. The cart, ordering and admin pages are placeholders. I will build their features later.

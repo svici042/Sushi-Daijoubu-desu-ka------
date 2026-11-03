@@ -1,0 +1,22 @@
+﻿<%- include('partials/header') %>
+    <main class="menu-page">
+      <h1>Meny</h1>
+      <p>Dette er midlertidige eksempler. Den endelige menyen kommer senere.</p>
+
+      <% menuSections.forEach(section => { %>
+        <section class="menu-section">
+          <h2><%= section.name %></h2>
+          <% section.dishes.forEach(dish => { %>
+            <article class="menu-dish">
+              <div>
+                <h3><%= dish.name %></h3>
+                <p><%= dish.description %></p>
+              </div>
+              <p class="menu-price"><%= dish.price %> kr</p>
+            </article>
+          <% }); %>
+        </section>
+      <% }); %>
+    </main>
+<%- include('partials/navigation') %>
+<%- include('partials/footer') %>

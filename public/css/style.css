@@ -125,6 +125,49 @@ a:focus-visible {
   padding: 0 1rem;
 }
 
+/* Simple menu sections reuse the site's existing colors. */
+.menu-page {
+  max-width: 60rem;
+  margin: 3rem auto;
+  padding: 0 1rem;
+}
+
+.menu-section {
+  margin-top: 2rem;
+}
+
+.menu-section h2 {
+  color: #352c49;
+  border-bottom: 2px solid #d879a0;
+  padding-bottom: 0.5rem;
+}
+
+.menu-dish {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem;
+  background: #fff;
+  border-radius: 0.5rem;
+}
+
+.menu-dish h3,
+.menu-dish p {
+  margin: 0 0 0.5rem;
+}
+
+.menu-price {
+  flex-shrink: 0;
+  font-weight: bold;
+}
+
+.site-footer {
+  padding: 1rem;
+  color: #f6f0e8;
+  background: #101d35;
+  text-align: center;
+}
+
 @media (max-width: 40rem) {
   .navigation-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

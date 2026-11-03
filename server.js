@@ -8,21 +8,50 @@ const port = process.env.PORT || 3000;
 app.set('view engine', 'ejs');
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Render the home page and simple destinations for its navigation links.
 app.get('/', (req, res) => {
-  res.render('index');
+  res.render('index', { title: 'Hjem', currentPage: '/' });
+});
+
+// Temporary examples for the menu page, separate from any future database.
+const menuSections = [
+  {
+    name: 'Maki',
+    dishes: [
+      { name: 'Maki (eksempel)', description: 'Eksempel på en makirull.', price: 89 }
+    ]
+  },
+  {
+    name: 'Nigiri',
+    dishes: [
+      { name: 'Nigiri (eksempel)', description: 'Eksempel på en nigiribit.', price: 49 }
+    ]
+  },
+  {
+    name: 'Sashimi',
+    dishes: [
+      { name: 'Sashimi (eksempel)', description: 'Eksempel på en sashimiporsjon.', price: 99 }
+    ]
+  }
+];
+
+app.get('/meny', (req, res) => {
+  res.render('menu', {
+    title: 'Meny',
+    currentPage: '/meny',
+    menuSections
+  });
 });
 
 const placeholderPages = {
-  '/meny': 'Meny',
   '/handlekurv': 'Handlekurv',
   '/bestilling': 'Bestilling',
   '/admin': 'Admin'
 };
 
+// These routes keep unfinished navigation links working until their pages are built.
 for (const [route, title] of Object.entries(placeholderPages)) {
   app.get(route, (req, res) => {
-    res.render('placeholder', { title });
+    res.render('placeholder', { title, currentPage: route });
   });
 }
 
