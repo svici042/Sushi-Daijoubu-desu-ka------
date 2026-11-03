@@ -1,38 +1,132 @@
-/* Base colors come from the project's design guidelines. */
+﻿/* Base palette and readable defaults from the design guidelines. */
 :root {
   font-family: Arial, sans-serif;
   color: #101d35;
   background: #f6f0e8;
 }
 
-/* Keep the initial layout readable on both narrow and wide screens. */
-body {
-  max-width: 60rem;
-  margin: 0 auto;
-  padding: 1.5rem;
+* {
+  box-sizing: border-box;
 }
 
-/* Header and navigation styles. */
-.logo {
+body {
+  margin: 0;
+}
+
+a {
   color: #352c49;
-  font-size: 1.5rem;
+}
+
+a:focus-visible {
+  outline: 3px solid #d879a0;
+  outline-offset: 4px;
+}
+
+/* The logo remains separate from the hero artwork and heading. */
+.site-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem max(1rem, calc((100vw - 72rem) / 2));
+  background: #101d35;
+}
+
+.brand img {
+  display: block;
+  width: min(12rem, 45vw);
+  height: auto;
+}
+
+.japanese-name {
+  margin: 0;
+  color: #f6f0e8;
+  font-size: clamp(1rem, 3vw, 1.6rem);
   font-weight: bold;
 }
 
-nav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
+.hero {
+  background: #352c49;
 }
 
-nav a {
+.hero-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 36rem;
+  object-fit: cover;
+  object-position: center;
+}
+
+.hero-content {
+  padding: 1.5rem 1rem 2rem;
+  color: #f6f0e8;
+  text-align: center;
+}
+
+.hero h1 {
+  margin: 0;
+  font-size: clamp(1.9rem, 5vw, 3.5rem);
+}
+
+.hero p {
+  margin-bottom: 0;
+  font-size: 1.1rem;
+}
+
+/* Navigation illustrations are links with visible text labels. */
+.navigation {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+  text-align: center;
+}
+
+.navigation h2 {
+  margin: 0 0 1.5rem;
   color: #352c49;
 }
 
-nav span {
-  color: #735f71;
+.navigation-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
 }
 
-main {
-  margin-top: 3rem;
+.navigation-link {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-radius: 1rem;
+  font-weight: bold;
+  text-decoration: none;
+}
+
+.navigation-link:hover {
+  background: #ee9d91;
+}
+
+.navigation-link img {
+  width: min(100%, 9rem);
+  height: auto;
+  aspect-ratio: 1;
+  object-fit: contain;
+}
+
+.admin-navigation {
+  border-top: 2px solid #d879a0;
+}
+
+.placeholder-page {
+  max-width: 40rem;
+  margin: 4rem auto;
+  padding: 0 1rem;
+}
+
+@media (max-width: 40rem) {
+  .navigation-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }

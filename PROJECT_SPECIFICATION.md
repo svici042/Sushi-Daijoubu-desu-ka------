@@ -109,9 +109,11 @@ The website should work on both computers and phones.
 
 ## Not decided yet
 
+- https, openssl
 - SQLite or SQL Server
 - EJS or another template engine
 - Final menu and categories
 - Hosting
+- SEO
 
 I'll focus on getting the main functions working before adding anything extra.

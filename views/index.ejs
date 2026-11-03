@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="nb">
   <head>
     <meta charset="utf-8">
@@ -7,19 +7,51 @@
     <link rel="stylesheet" href="/css/style.css">
   </head>
   <body>
-    <!-- Shared site header and basic customer navigation. -->
-    <header>
-      <p class="logo">大丈夫ですか？</p>
-      <nav aria-label="Hovedmeny">
-        <a href="/" aria-current="page">Hjem</a>
-        <span>Meny</span>
-        <span>Handlekurv / bestilling</span>
-      </nav>
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="SUSHI Daijoubu desu ka? – hjem">
+        <img src="/images/Fargerik%20sushi-anime%20med%20sakura%20og%20Fuji%20Logo1.png" alt="Illustrert restaurantlogo med sushi-kokk og lykkekatt">
+      </a>
+      <p class="japanese-name" lang="ja">大丈夫ですか？</p>
     </header>
-    <!-- Main home page content; the full design will be added later. -->
+
     <main>
-      <h1>SUSHI Daijoubu desu ka?</h1>
-      <p>Velkommen til vår sushirestaurant.</p>
+      <section class="hero" aria-labelledby="hero-title">
+        <img class="hero-image" src="/images/hero.webp" alt="Anime-kokk med sushi, sakurablomster, lykkekatt og japansk solnedgang" width="1222" height="473">
+        <div class="hero-content">
+          <h1 id="hero-title">SUSHI Daijoubu desu ka?</h1>
+          <p>Velkommen til vår sushirestaurant!</p>
+        </div>
+      </section>
+
+      <nav class="navigation" aria-label="Kundenavigasjon">
+        <h2>Utforsk restauranten</h2>
+        <div class="navigation-grid">
+          <a class="navigation-link" href="/" aria-current="page">
+            <img src="/images/nav-home.png" alt="" width="120" height="120">
+            <span>Hjem</span>
+          </a>
+          <a class="navigation-link" href="/meny">
+            <img src="/images/nav-menu.png" alt="" width="120" height="120">
+            <span>Meny</span>
+          </a>
+          <a class="navigation-link" href="/handlekurv">
+            <img src="/images/nav-cart.png" alt="" width="120" height="120">
+            <span>Handlekurv</span>
+          </a>
+          <a class="navigation-link" href="/bestilling">
+            <img src="/images/nav-order.png" alt="" width="120" height="120">
+            <span>Bestilling</span>
+          </a>
+        </div>
+      </nav>
+
+      <nav class="navigation admin-navigation" aria-label="Adminnavigasjon">
+        <h2>Administrasjon</h2>
+        <a class="navigation-link" href="/admin">
+          <img src="/images/nav-admin.png" alt="" width="120" height="120">
+          <span>Admin</span>
+        </a>
+      </nav>
     </main>
   </body>
 </html>
