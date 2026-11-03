@@ -1,3 +1,18 @@
+# Dependencies
 node_modules/
+
+# Environment variables
 .env
+.env.*
+!.env.example
+
+# Logs
 *.log
+
+# Database backups
+*.bak
+*.bacpac
+
+# Local files
+.DS_Store
+Thumbs.db
