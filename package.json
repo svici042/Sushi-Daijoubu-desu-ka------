@@ -3,8 +3,11 @@
   "version": "1.0.0",
   "private": true,
   "description": "Sushi restaurant project",
-  "scripts": {},
-  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon server.js",
+    "start": "node server.js"
+  },
+  "main": "server.js",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/svici042/Sushi-Daijoubu-desu-ka------.git"

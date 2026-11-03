@@ -1,0 +1,38 @@
+/* Base colors come from the project's design guidelines. */
+:root {
+  font-family: Arial, sans-serif;
+  color: #101d35;
+  background: #f6f0e8;
+}
+
+/* Keep the initial layout readable on both narrow and wide screens. */
+body {
+  max-width: 60rem;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+/* Header and navigation styles. */
+.logo {
+  color: #352c49;
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+nav a {
+  color: #352c49;
+}
+
+nav span {
+  color: #735f71;
+}
+
+main {
+  margin-top: 3rem;
+}
