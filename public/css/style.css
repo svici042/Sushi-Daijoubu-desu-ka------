@@ -149,6 +149,14 @@ input:focus-visible {
   object-fit: contain;
 }
 
+/* Show the current item count without changing the illustrated navigation. */
+.cart-badge {
+  padding: 0.2rem 0.6rem;
+  border-radius: 1rem;
+  color: #101d35;
+  background: #ee9d91;
+}
+
 .admin-navigation {
   border-top: 2px solid #d879a0;
 }
@@ -256,6 +264,56 @@ input:focus-visible {
 /* Keep the price visible beside longer descriptions. */
 .menu-price {
   flex-shrink: 0;
+  font-weight: bold;
+}
+
+/* Cart controls share the menu colors and the existing focus outline. */
+.cart-button,
+.cart-quantity button {
+  padding: 0.5rem 0.8rem;
+  border: 2px solid #352c49;
+  border-radius: 0.6rem;
+  color: #f6f0e8;
+  background: #352c49;
+  cursor: pointer;
+  font: inherit;
+}
+
+.cart-quantity button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.cart-feedback:not(:empty) {
+  padding: 0.75rem;
+  background: #ee9d91;
+}
+
+.cart-page {
+  max-width: 60rem;
+  margin: 3rem auto;
+  padding: 0 1rem;
+}
+
+.cart-item {
+  margin: 1rem 0;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  background: #fff;
+}
+
+.cart-item h2 {
+  color: #352c49;
+}
+
+.cart-quantity {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+#cart-summary {
   font-weight: bold;
 }
 

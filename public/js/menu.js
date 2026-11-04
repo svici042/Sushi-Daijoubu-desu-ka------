@@ -4,6 +4,7 @@ const searchInput = document.querySelector('#dish-search');
 const clearButton = document.querySelector('#clear-search');
 const noResults = document.querySelector('#menu-no-results');
 const emptyMenu = document.querySelector('#menu-empty');
+const cartFeedback = document.querySelector('#cart-feedback');
 
 let selectedCategory = 'all';
 
@@ -63,3 +64,17 @@ clearButton.addEventListener('click', () => {
 
 // Apply a search value restored by the browser after returning to this page.
 updateMenu();
+
+// Available menu cards have add buttons; each click adds one unit.
+for (const button of document.querySelectorAll('[data-add-dish]')) {
+  button.addEventListener('click', () => {
+    const id = button.dataset.addDish;
+    const quantity = Cart.read()[id] || 0;
+    if (quantity >= Cart.maxQuantity) {
+      cartFeedback.textContent = document.querySelector('.menu-page').dataset.limit;
+      return;
+    }
+    Cart.set(id, quantity + 1);
+    cartFeedback.textContent = `${button.closest('.menu-dish').querySelector('h3').textContent}: ${document.querySelector('.menu-page').dataset.added}`;
+  });
+}

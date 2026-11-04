@@ -12,6 +12,7 @@
           <a class="navigation-link" href="/handlekurv<%= languageQuery %>" <% if (currentPage === '/handlekurv') { %>aria-current="page"<% } %>>
             <img src="/images/nav-cart.png" alt="" width="120" height="120">
             <span><%= text.cart %></span>
+            <span class="cart-badge" data-cart-count hidden aria-label="<%= text.itemCount %>"></span>
           </a>
           <a class="navigation-link" href="/bestilling<%= languageQuery %>" <% if (currentPage === '/bestilling') { %>aria-current="page"<% } %>>
             <img src="/images/nav-order.png" alt="" width="120" height="120">
@@ -19,6 +20,7 @@
           </a>
         </div>
       </nav>
+      <script src="/js/cart.js" defer></script>
 
       <nav class="navigation admin-navigation" aria-label="<%= text.adminNavigation %>">
         <h2><%= text.administration %></h2>

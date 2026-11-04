@@ -1,5 +1,5 @@
 ﻿<%- include('partials/header') %>
-    <main class="menu-page">
+    <main class="menu-page" data-added="<%= text.addedToCart %>" data-limit="<%= text.cartLimit %>">
       <h1><%= text.menu %></h1>
       <% if (menuError) { %>
         <p role="alert"><%= menuError %></p>
@@ -24,6 +24,7 @@
         <p id="menu-no-results" role="status" hidden><%= text.noResults %></p>
         <!-- All also has an empty state when no category has available dishes. -->
         <p id="menu-empty" role="status" hidden><%= text.noDishes %></p>
+        <p id="cart-feedback" role="status" class="cart-feedback" aria-live="polite"></p>
 
         <% menuSections.forEach(section => { %>
           <section class="menu-section" data-menu-section="<%= section.id %>">
@@ -51,6 +52,7 @@
                   <% } %>
                 </div>
                 <p class="menu-price"><%= dish.price %></p>
+                <button type="button" class="cart-button" data-add-dish="<%= dish.id %>"><%= text.addToCart %></button>
               </article>
             <% }); %>
           </section>

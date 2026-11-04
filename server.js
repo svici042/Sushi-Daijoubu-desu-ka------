@@ -5,6 +5,7 @@ const { getPool } = require('./db');
 
 const app = express();
 const port = process.env.PORT || 3000;
+const host = process.env.HOST || '127.0.0.1';
 
 // Render pages with EJS and serve styles and other public assets directly.
 app.set('view engine', 'ejs');
@@ -16,6 +17,22 @@ const labels = {
     home: 'Hjem',
     menu: 'Meny',
     cart: 'Handlekurv',
+    addToCart: 'Legg i handlekurv',
+    addedToCart: 'Lagt i handlekurven',
+    cartLimit: 'Maks 99 per rett.',
+    cartEmpty: 'Handlekurven er tom.',
+    backMenu: 'Se menyen',
+    quantity: 'Antall',
+    unitPrice: 'Pris per stykk',
+    lineTotal: 'Sum',
+    cartTotal: 'Totalt',
+    itemCount: 'Antall varer',
+    remove: 'Fjern',
+    increase: 'Øk antall',
+    decrease: 'Reduser antall',
+    cartUnavailable: 'Noen retter er slettet eller utilgjengelige og er ikke med i summen.',
+    unavailableDish: 'Rett som ikke lenger er tilgjengelig',
+    cartError: 'Kunne ikke hente handlekurven. Prøv igjen senere.',
     order: 'Bestilling',
     admin: 'Admin',
     explore: 'Utforsk restauranten',
@@ -43,6 +60,22 @@ const labels = {
     home: 'Home',
     menu: 'Menu',
     cart: 'Cart',
+    addToCart: 'Add to cart',
+    addedToCart: 'Added to cart',
+    cartLimit: 'Maximum 99 per dish.',
+    cartEmpty: 'Your cart is empty.',
+    backMenu: 'View menu',
+    quantity: 'Quantity',
+    unitPrice: 'Unit price',
+    lineTotal: 'Line total',
+    cartTotal: 'Total',
+    itemCount: 'Items',
+    remove: 'Remove',
+    increase: 'Increase quantity',
+    decrease: 'Decrease quantity',
+    cartUnavailable: 'Some dishes were deleted or are unavailable and are not included in the total.',
+    unavailableDish: 'Dish no longer available',
+    cartError: 'Could not load the cart. Please try again later.',
     order: 'Order',
     admin: 'Admin',
     explore: 'Explore the restaurant',
@@ -143,6 +176,7 @@ app.get('/meny', async (req, res) => {
 
     for (const dish of dishes.recordset) {
       const menuDish = {
+        id: dish.Id,
         name: english ? dish.NameEn : dish.NameNo,
         description: english ? dish.DescriptionEn : dish.DescriptionNo,
         // Search always includes both languages, whatever is shown on screen.
@@ -185,8 +219,44 @@ app.get('/meny', async (req, res) => {
   }
 });
 
+// Return current database details for cart IDs; browser storage never supplies prices.
+app.get('/api/cart-dishes', async (req, res) => {
+  const ids = String(req.query.ids || '').split(',').filter(Boolean).map(Number);
+  if (ids.length > 99 || ids.some(id => !Number.isSafeInteger(id) || id < 1)) {
+    return res.status(400).json({ error: 'Invalid dish IDs.' });
+  }
+  if (ids.length === 0) {
+    return res.json([]);
+  }
+
+  try {
+    const pool = await getPool();
+    const request = pool.request();
+    // Each ID is bound as a SQL parameter before building the IN list.
+    const parameters = [...new Set(ids)].map((id, index) => {
+      request.input(`id${index}`, id);
+      return `@id${index}`;
+    });
+    const result = await request.query(`
+      SELECT Id, NameNo, NameEn, PriceOre, IsAvailable
+      FROM dbo.Dishes
+      WHERE Id IN (${parameters.join(', ')})
+    `);
+    res.json(result.recordset);
+  } catch (error) {
+    console.error('Could not load cart dishes:', error.code || error.name);
+    res.status(503).json({ error: 'Cart dishes unavailable.' });
+  }
+});
+
+app.get('/handlekurv', (req, res) => {
+  res.render('cart', {
+    title: res.locals.text.cart,
+    currentPage: '/handlekurv'
+  });
+});
+
 const placeholderPages = {
-  '/handlekurv': 'cart',
   '/bestilling': 'order',
   '/admin': 'admin'
 };
@@ -201,6 +271,7 @@ for (const [route, label] of Object.entries(placeholderPages)) {
   });
 }
 
-app.listen(port, () => {
+// Use localhost by default; set HOST=0.0.0.0 in .env for local Wi-Fi testing.
+app.listen(port, host, () => {
   console.log(`Server running at http://localhost:${port}`);
 });

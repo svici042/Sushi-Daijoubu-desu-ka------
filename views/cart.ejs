@@ -1,0 +1,20 @@
+<%- include('partials/header') %>
+    <main class="cart-page" data-language="<%= language %>"
+      data-empty="<%= text.cartEmpty %>" data-unavailable="<%= text.cartUnavailable %>"
+      data-unavailable-dish="<%= text.unavailableDish %>"
+      data-error="<%= text.cartError %>" data-unit="<%= text.unitPrice %>"
+      data-quantity="<%= text.quantity %>" data-line="<%= text.lineTotal %>"
+      data-increase="<%= text.increase %>" data-decrease="<%= text.decrease %>"
+      data-remove="<%= text.remove %>">
+      <h1><%= text.cart %></h1>
+      <p id="cart-message" role="status"></p>
+      <div id="cart-items"></div>
+      <div id="cart-summary" hidden>
+        <p><%= text.itemCount %>: <strong id="cart-item-count">0</strong></p>
+        <p><%= text.cartTotal %>: <strong id="cart-total">0,00 kr</strong></p>
+      </div>
+      <a href="/meny<%= languageQuery %>"><%= text.backMenu %></a>
+    </main>
+<%- include('partials/navigation') %>
+<script src="/js/cart-page.js" defer></script>
+<%- include('partials/footer') %>
