@@ -146,9 +146,22 @@ a:focus-visible {
   display: flex;
   justify-content: space-between;
   gap: 1rem;
+  align-items: flex-start;
   padding: 1rem;
   background: #fff;
   border-radius: 0.5rem;
+}
+
+.menu-image {
+  width: 7rem;
+  height: 7rem;
+  object-fit: cover;
+  border-radius: 0.5rem;
+}
+
+.menu-details {
+  flex: 1;
+  min-width: 0;
 }
 
 .menu-dish h3,
@@ -171,5 +184,9 @@ a:focus-visible {
 @media (max-width: 40rem) {
   .navigation-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .menu-dish {
+    flex-wrap: wrap;
   }
 }
