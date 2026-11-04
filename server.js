@@ -2,6 +2,7 @@ const express = require('express');
 const fs = require('node:fs');
 const path = require('node:path');
 const { getPool } = require('./db');
+const sql = require('mssql/msnodesqlv8');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -10,6 +11,7 @@ const host = process.env.HOST || '127.0.0.1';
 // Render pages with EJS and serve styles and other public assets directly.
 app.set('view engine', 'ejs');
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.json({ limit: '16kb' }));
 
 // The language stays in links, so it follows the visitor between pages.
 const labels = {
@@ -33,6 +35,9 @@ const labels = {
     cartUnavailable: 'Noen retter er slettet eller utilgjengelige og er ikke med i summen.',
     unavailableDish: 'Rett som ikke lenger er tilgjengelig',
     cartError: 'Kunne ikke hente handlekurven. Prøv igjen senere.',
+    customerName: 'Navn', placeOrder: 'Send bestilling', orderSuccess: 'Bestilling mottatt. Ordrenummer:',
+    orderInvalid: 'Ugyldig navn eller handlekurv.', orderUnavailable: 'En rett mangler eller er ikke tilgjengelig.',
+    orderError: 'Bestillingen kunne ikke lagres. Prøv igjen.', orderReview: 'Kontroller bestillingen før du sender den.',
     order: 'Bestilling',
     admin: 'Admin',
     explore: 'Utforsk restauranten',
@@ -76,6 +81,9 @@ const labels = {
     cartUnavailable: 'Some dishes were deleted or are unavailable and are not included in the total.',
     unavailableDish: 'Dish no longer available',
     cartError: 'Could not load the cart. Please try again later.',
+    customerName: 'Name', placeOrder: 'Place order', orderSuccess: 'Order received. Order number:',
+    orderInvalid: 'Invalid name or cart.', orderUnavailable: 'A dish is missing or unavailable.',
+    orderError: 'Could not save the order. Please try again.', orderReview: 'Review your order before placing it.',
     order: 'Order',
     admin: 'Admin',
     explore: 'Explore the restaurant',
@@ -249,15 +257,80 @@ app.get('/api/cart-dishes', async (req, res) => {
   }
 });
 
-app.get('/handlekurv', (req, res) => {
+app.get(['/handlekurv', '/kurv'], (req, res) => {
   res.render('cart', {
     title: res.locals.text.cart,
-    currentPage: '/handlekurv'
+    currentPage: req.path
   });
 });
 
+app.get(['/bestilling', '/bestill'], (req, res) => {
+  res.render('order', { title: res.locals.text.order, currentPage: req.path });
+});
+
+app.post('/api/orders', async (req, res) => {
+  const name = req.body?.name;
+  const cart = req.body?.cart;
+  const entries = cart && typeof cart === 'object' && !Array.isArray(cart)
+    ? Object.entries(cart) : [];
+  const valid = typeof name === 'string' && name.trim().length > 0
+    && name.trim().length <= 100 && entries.length > 0 && entries.length <= 99
+    && entries.every(([id, quantity]) => /^[1-9]\d*$/.test(id)
+      && Number.isSafeInteger(Number(id)) && Number(id) <= 2147483647
+      && Number.isInteger(quantity)
+      && quantity >= 1 && quantity <= 99);
+  if (!valid) return res.status(400).json({ error: res.locals.text.orderInvalid });
+
+  let transaction;
+  try {
+    transaction = new sql.Transaction(await getPool());
+    await transaction.begin();
+    const lines = [];
+    let totalOre = 0;
+    // Lock the selected rows until commit so availability and prices cannot change mid-order.
+    for (const [id, quantity] of entries) {
+      const result = await new sql.Request(transaction)
+        .input('id', sql.Int, Number(id))
+        .query('SELECT Id, PriceOre, IsAvailable FROM dbo.Dishes WITH (UPDLOCK, HOLDLOCK) WHERE Id = @id');
+      const dish = result.recordset[0];
+      if (!dish || !dish.IsAvailable || !Number.isSafeInteger(dish.PriceOre) || dish.PriceOre < 0) {
+        await transaction.rollback();
+        return res.status(409).json({ error: res.locals.text.orderUnavailable });
+      }
+      lines.push({ id: dish.Id, quantity, priceOre: dish.PriceOre });
+      totalOre += dish.PriceOre * quantity;
+    }
+    if (!Number.isSafeInteger(totalOre) || totalOre > 2147483647) {
+      await transaction.rollback();
+      return res.status(400).json({ error: res.locals.text.orderInvalid });
+    }
+    const created = await new sql.Request(transaction)
+      .input('name', sql.NVarChar(100), name.trim())
+      .input('totalOre', sql.Int, totalOre)
+      .query(`INSERT INTO dbo.Orders (CustomerName, TotalOre)
+              OUTPUT INSERTED.Id VALUES (@name, @totalOre)`);
+    const orderId = created.recordset[0].Id;
+    for (const line of lines) {
+      await new sql.Request(transaction)
+        .input('orderId', sql.Int, orderId)
+        .input('dishId', sql.Int, line.id)
+        .input('quantity', sql.Int, line.quantity)
+        .input('priceOre', sql.Int, line.priceOre)
+        .query(`INSERT INTO dbo.OrderItems (OrderId, DishId, Quantity, UnitPriceOre)
+                VALUES (@orderId, @dishId, @quantity, @priceOre)`);
+    }
+    await transaction.commit();
+    res.status(201).json({ orderId, totalOre });
+  } catch (error) {
+    if (transaction) {
+      try { await transaction.rollback(); } catch { /* The connection may already have rolled back. */ }
+    }
+    console.error('Could not create order:', error.code || error.name);
+    res.status(503).json({ error: res.locals.text.orderError });
+  }
+});
+
 const placeholderPages = {
-  '/bestilling': 'order',
   '/admin': 'admin'
 };
 

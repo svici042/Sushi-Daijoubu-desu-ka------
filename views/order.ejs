@@ -1,0 +1,19 @@
+<%- include('partials/header') %>
+<main class="cart-page order-page" data-language="<%= language %>" data-empty="<%= text.cartEmpty %>"
+  data-error="<%= text.cartError %>" data-invalid="<%= text.orderInvalid %>"
+  data-unavailable="<%= text.orderUnavailable %>" data-success="<%= text.orderSuccess %>">
+  <h1><%= text.order %></h1>
+  <p><%= text.orderReview %></p>
+  <p id="order-message" role="status" aria-live="polite"></p>
+  <div id="order-items"></div>
+  <p id="order-total"></p>
+  <form id="order-form" hidden>
+    <label for="customer-name"><%= text.customerName %></label>
+    <input id="customer-name" name="name" required maxlength="100" autocomplete="name">
+    <button type="submit"><%= text.placeOrder %></button>
+  </form>
+  <a href="/kurv<%= languageQuery %>"><%= text.cart %></a>
+</main>
+<%- include('partials/navigation') %>
+<script src="/js/order.js" defer></script>
+<%- include('partials/footer') %>

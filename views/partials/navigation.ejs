@@ -14,7 +14,7 @@
             <span><%= text.cart %></span>
             <span class="cart-badge" data-cart-count hidden aria-label="<%= text.itemCount %>"></span>
           </a>
-          <a class="navigation-link" href="/bestilling<%= languageQuery %>" <% if (currentPage === '/bestilling') { %>aria-current="page"<% } %>>
+          <a class="navigation-link" href="/bestill<%= languageQuery %>" <% if (currentPage === '/bestill' || currentPage === '/bestilling') { %>aria-current="page"<% } %>>
             <img src="/images/nav-order.png" alt="" width="120" height="120">
             <span><%= text.order %></span>
           </a>

@@ -65,16 +65,29 @@ clearButton.addEventListener('click', () => {
 // Apply a search value restored by the browser after returning to this page.
 updateMenu();
 
-// Available menu cards have add buttons; each click adds one unit.
+// Each card owns its selector; adding uses that card's selected quantity.
+for (const selector of document.querySelectorAll('.menu-quantity')) {
+  selector.addEventListener('click', event => {
+    const button = event.target.closest('button[data-step]');
+    if (!button) return;
+    const output = selector.querySelector('[data-selected-quantity]');
+    const quantity = Math.max(1, Math.min(99, Number(output.value) + Number(button.dataset.step)));
+    output.value = quantity;
+    selector.querySelector('[data-step="-1"]').disabled = quantity === 1;
+    selector.querySelector('[data-step="1"]').disabled = quantity === 99;
+  });
+}
+
 for (const button of document.querySelectorAll('[data-add-dish]')) {
   button.addEventListener('click', () => {
     const id = button.dataset.addDish;
     const quantity = Cart.read()[id] || 0;
-    if (quantity >= Cart.maxQuantity) {
+    const selected = Number(button.closest('.menu-dish').querySelector('[data-selected-quantity]').value);
+    if (quantity + selected > Cart.maxQuantity) {
       cartFeedback.textContent = document.querySelector('.menu-page').dataset.limit;
       return;
     }
-    Cart.set(id, quantity + 1);
+    Cart.set(id, quantity + selected);
     cartFeedback.textContent = `${button.closest('.menu-dish').querySelector('h3').textContent}: ${document.querySelector('.menu-page').dataset.added}`;
   });
 }

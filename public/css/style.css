@@ -64,6 +64,34 @@ input:focus-visible {
   gap: 0.5rem;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.header-cart {
+  position: relative;
+  display: inline-flex;
+  padding: 0.45rem;
+  color: #f6f0e8;
+  border: 1px solid #d879a0;
+  border-radius: 0.5rem;
+}
+
+.header-cart-badge {
+  position: absolute;
+  top: -0.65rem;
+  right: -0.65rem;
+  min-width: 1.35rem;
+  padding: 0.1rem;
+  border-radius: 1rem;
+  color: #101d35;
+  background: #ee9d91;
+  font-size: 0.7rem;
+  text-align: center;
+}
+
 .language-switch a {
   padding: 0.4rem 0.6rem;
   border: 1px solid #d879a0;
@@ -269,6 +297,7 @@ input:focus-visible {
 
 /* Cart controls share the menu colors and the existing focus outline. */
 .cart-button,
+.menu-quantity button,
 .cart-quantity button {
   padding: 0.5rem 0.8rem;
   border: 2px solid #352c49;
@@ -277,6 +306,29 @@ input:focus-visible {
   background: #352c49;
   cursor: pointer;
   font: inherit;
+}
+
+.menu-order-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.menu-quantity {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.menu-quantity output {
+  min-width: 2ch;
+  text-align: center;
+}
+
+.menu-quantity button:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .cart-quantity button:disabled {
@@ -293,6 +345,35 @@ input:focus-visible {
   max-width: 60rem;
   margin: 3rem auto;
   padding: 0 1rem;
+}
+
+.order-page form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 1.5rem 0;
+}
+
+.order-page input {
+  padding: 0.6rem;
+  border: 2px solid #352c49;
+  border-radius: 0.5rem;
+  font: inherit;
+}
+
+.order-page form button {
+  padding: 0.6rem 1rem;
+  border: 0;
+  border-radius: 0.5rem;
+  color: #fff;
+  background: #352c49;
+  font: inherit;
+  cursor: pointer;
+}
+
+.order-page form button:disabled {
+  opacity: 0.5;
 }
 
 .cart-item {

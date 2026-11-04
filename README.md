@@ -6,7 +6,7 @@ Node.js / Express project
 
 ## About
 
-A sushi restaurant website with a menu, ordering system and admin pages.
+A sushi restaurant website with a menu and a simple ordering flow.
 
 I worked at Gan Bei City (not promotion) as a sushi master and sous-chef. The menu will be partly inspired by my experience there.
 
@@ -40,7 +40,7 @@ Install Node.js 22 or newer, SQL Server, and the ODBC Driver for SQL Server. The
 npm ci
 ```
 
-Copy `.env.example` to `.env` and fill in the SQL Server settings. I use `DB_AUTH=sql` with my SQL login. For a local named instance, `DB_SERVER=.\SQLEXPRESS` can be used without setting a port.
+Copy `.env.example` to `.env` and fill in the SQL Server settings. I use `DB_AUTH=sql` with my SQL login. For a local named instance, `DB_SERVER=.\SQLEXPRESS` can be used without setting a port. Run `sql/setup.sql`, then `sql/orders.sql` in SQL Server Management Studio using an account that can create tables. The application's SQL login needs SELECT on Dishes and INSERT on Orders and OrderItems; it does not need schema change permissions.
 
 Start the site with:
 
@@ -57,4 +57,4 @@ Open http://localhost:3000/ in your browser.
 
 ## Status
 
-Express and EJS are set up. The home page works, and the menu page reads available dishes and allergens from SQL Server. I can filter categories, search dishes and switch between Norwegian and English. The cart saves dish IDs and quantities in the browser and gets current prices from SQL Server. Ordering and admin pages are still placeholders.
+The menu reads available dishes and allergens from SQL Server. I can filter and search dishes, switch between Norwegian and English, and choose quantities. The cart saves dish IDs and quantities in the browser. Orders ask for a name and save current prices and items in SQL Server. The admin page is still a placeholder.

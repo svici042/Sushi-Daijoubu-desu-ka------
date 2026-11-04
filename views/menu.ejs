@@ -52,7 +52,14 @@
                   <% } %>
                 </div>
                 <p class="menu-price"><%= dish.price %></p>
-                <button type="button" class="cart-button" data-add-dish="<%= dish.id %>"><%= text.addToCart %></button>
+                <div class="menu-order-controls">
+                  <div class="menu-quantity" role="group" aria-label="<%= text.quantity %>: <%= dish.name %>">
+                    <button type="button" data-step="-1" aria-label="<%= text.decrease %>: <%= dish.name %>" disabled>−</button>
+                    <output data-selected-quantity>1</output>
+                    <button type="button" data-step="1" aria-label="<%= text.increase %>: <%= dish.name %>">+</button>
+                  </div>
+                  <button type="button" class="cart-button" data-add-dish="<%= dish.id %>"><%= text.addToCart %></button>
+                </div>
               </article>
             <% }); %>
           </section>
