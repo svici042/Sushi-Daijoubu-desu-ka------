@@ -27,13 +27,24 @@ BEGIN
         DescriptionNo NVARCHAR(500) NULL,
         DescriptionEn NVARCHAR(500) NULL,
         PriceOre INT NOT NULL CHECK (PriceOre >= 0),
-        Pieces INT NOT NULL CHECK (Pieces > 0),
+        Pieces INT NULL CHECK (Pieces > 0),
         ImagePath NVARCHAR(255) NULL,
         IsAvailable BIT NOT NULL DEFAULT (1),
         CONSTRAINT FK_Dishes_Categories FOREIGN KEY (CategoryId)
             REFERENCES dbo.Categories(Id)
     );
 END;
+GO
+
+-- Allow portions measured by weight while keeping the positive-piece check.
+IF EXISTS (
+    SELECT 1
+    FROM sys.columns
+    WHERE object_id = OBJECT_ID(N'dbo.Dishes')
+        AND name = N'Pieces'
+        AND is_nullable = 0
+)
+    ALTER TABLE dbo.Dishes ALTER COLUMN Pieces INT NULL;
 GO
 
 -- Link dishes to the fixed allergen list through a junction table.
