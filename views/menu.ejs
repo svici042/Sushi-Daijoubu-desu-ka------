@@ -22,6 +22,8 @@
         </div>
 
         <p id="menu-no-results" role="status" hidden><%= text.noResults %></p>
+        <!-- All also has an empty state when no category has available dishes. -->
+        <p id="menu-empty" role="status" hidden><%= text.noDishes %></p>
 
         <% menuSections.forEach(section => { %>
           <section class="menu-section" data-menu-section="<%= section.id %>">
