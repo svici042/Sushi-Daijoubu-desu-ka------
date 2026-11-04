@@ -19,8 +19,8 @@
         <span class="header-cart-badge" data-cart-count hidden></span>
       </a>
       <nav class="language-switch" aria-label="Velg språk / Choose language">
-        <a href="<%= currentPage %>" lang="nb" <% if (language === 'no') { %>aria-current="page"<% } %>>NO</a>
-        <a href="<%= currentPage %>?lang=en" lang="en" <% if (language === 'en') { %>aria-current="page"<% } %>>EN</a>
+        <a href="<%= languageSwitchPath %>" lang="nb" <% if (language === 'no') { %>aria-current="page"<% } %>>NO</a>
+        <a href="<%= languageSwitchPath %><%= languageSwitchPath.includes('?') ? '&' : '?' %>lang=en" lang="en" <% if (language === 'en') { %>aria-current="page"<% } %>>EN</a>
       </nav>
       </div>
     </header>

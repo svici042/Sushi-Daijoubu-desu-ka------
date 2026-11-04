@@ -3,6 +3,10 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { getPool } = require('./db');
 const sql = require('mssql/msnodesqlv8');
+const crypto = require('node:crypto');
+const session = require('express-session');
+const bcrypt = require('bcryptjs');
+const { rateLimit } = require('express-rate-limit');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -12,6 +16,27 @@ const host = process.env.HOST || '127.0.0.1';
 app.set('view engine', 'ejs');
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json({ limit: '16kb' }));
+app.use(express.urlencoded({ extended: false }));
+
+// Admin sessions stay server-side; a persistent store is required before production use.
+if (!process.env.ADMIN_SESSION_SECRET || process.env.ADMIN_SESSION_SECRET.length < 32) {
+  throw new Error('ADMIN_SESSION_SECRET must contain at least 32 characters.');
+}
+if (process.env.NODE_ENV === 'production') {
+  throw new Error('Configure a persistent admin session store before production deployment.');
+}
+app.use(session({
+  name: 'sushi-admin',
+  secret: process.env.ADMIN_SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    sameSite: 'strict',
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 8 * 60 * 60 * 1000
+  }
+}));
 
 // The language stays in links, so it follows the visitor between pages.
 const labels = {
@@ -59,7 +84,16 @@ const labels = {
     imageAlt: 'Bilde av',
     unavailable: 'Menyen er midlertidig utilgjengelig. Prøv igjen senere.',
     customerNavigation: 'Kundenavigasjon',
-    adminNavigation: 'Adminnavigasjon'
+    adminNavigation: 'Adminnavigasjon',
+    adminLogin: 'Admininnlogging', password: 'Passord', login: 'Logg inn', logout: 'Logg ut',
+    loginFailed: 'Feil passord.', loginLimited: 'For mange forsøk. Prøv igjen senere.',
+    adminSetup: 'Admininnlogging er ikke satt opp.', adminOrders: 'Bestillinger',
+    newOrders: 'Nye bestillinger', status: 'Status', orderDate: 'Dato',
+    filterStatus: 'Filtrer status', preparing: 'Under tilberedning', ready: 'Klar',
+    completed: 'Fullført', newStatus: 'Ny', nextStatus: 'Neste status',
+    noOrders: 'Ingen bestillinger funnet.', adminError: 'Kunne ikke hente bestillinger.',
+    statusError: 'Kunne ikke oppdatere status.', invalidTransition: 'Ugyldig statusendring.',
+    orderNumber: 'Ordre', orderDetails: 'Vis varer'
   },
   en: {
     home: 'Home',
@@ -105,7 +139,16 @@ const labels = {
     imageAlt: 'Image of',
     unavailable: 'The menu is temporarily unavailable. Please try again later.',
     customerNavigation: 'Customer navigation',
-    adminNavigation: 'Admin navigation'
+    adminNavigation: 'Admin navigation',
+    adminLogin: 'Admin login', password: 'Password', login: 'Log in', logout: 'Log out',
+    loginFailed: 'Incorrect password.', loginLimited: 'Too many attempts. Try again later.',
+    adminSetup: 'Admin login is not configured.', adminOrders: 'Orders',
+    newOrders: 'New orders', status: 'Status', orderDate: 'Date',
+    filterStatus: 'Filter status', preparing: 'Preparing', ready: 'Ready',
+    completed: 'Completed', newStatus: 'New', nextStatus: 'Next status',
+    noOrders: 'No orders found.', adminError: 'Could not load orders.',
+    statusError: 'Could not update status.', invalidTransition: 'Invalid status change.',
+    orderNumber: 'Order', orderDetails: 'Show items'
   }
 };
 
@@ -114,6 +157,7 @@ app.use((req, res, next) => {
   res.locals.language = language;
   res.locals.languageQuery = language === 'en' ? '?lang=en' : '';
   res.locals.text = labels[language];
+  res.locals.languageSwitchPath = req.path;
   next();
 });
 
@@ -330,21 +374,161 @@ app.post('/api/orders', async (req, res) => {
   }
 });
 
-const placeholderPages = {
-  '/admin': 'admin'
-};
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  handler: (req, res) => res.status(429).render('admin-login', {
+    title: res.locals.text.adminLogin,
+    currentPage: '/admin/login',
+    csrfToken: csrfToken(req),
+    loginError: res.locals.text.loginLimited
+  })
+});
 
-// These routes keep unfinished navigation links working until their pages are built.
-for (const [route, label] of Object.entries(placeholderPages)) {
-  app.get(route, (req, res) => {
-    res.render('placeholder', {
-      title: res.locals.text[label],
-      currentPage: route
+function csrfToken(req) {
+  if (!req.session.csrfToken) req.session.csrfToken = crypto.randomBytes(32).toString('hex');
+  return req.session.csrfToken;
+}
+
+function checkCsrf(req, res, next) {
+  const given = req.body?._csrf;
+  const expected = req.session.csrfToken;
+  if (typeof given !== 'string' || !expected || given.length !== expected.length
+    || !crypto.timingSafeEqual(Buffer.from(given), Buffer.from(expected))) {
+    return res.sendStatus(403);
+  }
+  next();
+}
+
+function requireAdmin(req, res, next) {
+  if (req.session.admin === true) return next();
+  if (req.path.startsWith('/api/')) return res.sendStatus(401);
+  res.redirect(`/admin/login${res.locals.languageQuery}`);
+}
+
+app.get('/admin/login', (req, res) => {
+  if (req.session.admin) return res.redirect(`/admin${res.locals.languageQuery}`);
+  res.render('admin-login', {
+    title: res.locals.text.adminLogin,
+    currentPage: '/admin/login',
+    csrfToken: csrfToken(req),
+    loginError: null
+  });
+});
+
+app.post('/admin/login', loginLimiter, checkCsrf, async (req, res, next) => {
+  const hash = process.env.ADMIN_PASSWORD_HASH;
+  const password = req.body.password;
+  const validHash = typeof hash === 'string' && /^\$2[aby]\$\d\d\$/.test(hash);
+  const valid = validHash && typeof password === 'string' && password.length <= 1024
+    && await bcrypt.compare(password, hash);
+  if (!valid) {
+    return res.status(401).render('admin-login', {
+      title: res.locals.text.adminLogin,
+      currentPage: '/admin/login',
+      csrfToken: csrfToken(req),
+      loginError: validHash ? res.locals.text.loginFailed : res.locals.text.adminSetup
     });
+  }
+  req.session.regenerate(error => {
+    if (error) return next(error);
+    req.session.admin = true;
+    csrfToken(req);
+    res.redirect(`/admin${res.locals.languageQuery}`);
+  });
+});
+
+app.post('/admin/logout', requireAdmin, checkCsrf, (req, res, next) => {
+  req.session.destroy(error => {
+    if (error) return next(error);
+    res.clearCookie('sushi-admin');
+    res.redirect(`/admin/login${res.locals.languageQuery}`);
+  });
+});
+
+const statusLabels = { new: 'newStatus', preparing: 'preparing', ready: 'ready', completed: 'completed' };
+const nextStatus = { new: 'preparing', preparing: 'ready', ready: 'completed' };
+
+app.get('/admin', requireAdmin, async (req, res) => {
+  const filter = typeof req.query.status === 'string'
+    && Object.hasOwn(statusLabels, req.query.status)
+    ? req.query.status : 'all';
+  res.locals.languageSwitchPath = filter === 'all' ? '/admin' : `/admin?status=${filter}`;
+  try {
+    const pool = await getPool();
+    const orders = await pool.request()
+      .input('filter', sql.NVarChar(20), filter)
+      .query(`SELECT Id, CreatedAt, CustomerName, Status, TotalOre
+              FROM dbo.Orders
+              WHERE @filter = N'all' OR Status = @filter
+              ORDER BY CreatedAt DESC, Id DESC`);
+    const count = await pool.request()
+      .query("SELECT COUNT(*) AS NewCount FROM dbo.Orders WHERE Status = N'new'");
+    const items = await pool.request()
+      .input('filter', sql.NVarChar(20), filter)
+      .query(`SELECT oi.OrderId, oi.Quantity, oi.UnitPriceOre, d.NameNo, d.NameEn
+              FROM dbo.OrderItems AS oi
+              JOIN dbo.Orders AS o ON o.Id = oi.OrderId
+              LEFT JOIN dbo.Dishes AS d ON d.Id = oi.DishId
+              WHERE @filter = N'all' OR o.Status = @filter
+              ORDER BY oi.Id`);
+    const itemsByOrder = new Map(orders.recordset.map(order => [order.Id, []]));
+    for (const item of items.recordset) itemsByOrder.get(item.OrderId).push(item);
+    res.render('admin', {
+      title: res.locals.text.adminOrders,
+      currentPage: '/admin',
+      csrfToken: csrfToken(req),
+      orders: orders.recordset,
+      itemsByOrder,
+      newCount: count.recordset[0].NewCount,
+      filter,
+      statusLabels,
+      nextStatus,
+      money: priceFormatter,
+      adminError: null
+    });
+  } catch (error) {
+    console.error('Could not load admin orders:', error.code || error.name);
+    res.status(503).render('admin', {
+      title: res.locals.text.adminOrders,
+      currentPage: '/admin',
+      csrfToken: csrfToken(req),
+      orders: [], itemsByOrder: new Map(), newCount: 0, filter,
+      statusLabels, nextStatus, money: priceFormatter,
+      adminError: res.locals.text.adminError
+    });
+  }
+});
+
+app.post('/admin/orders/:id/status', requireAdmin, checkCsrf, async (req, res) => {
+  const id = Number(req.params.id);
+  const from = req.body.from;
+  const to = req.body.to;
+  if (!Number.isInteger(id) || id < 1 || id > 2147483647 || nextStatus[from] !== to) {
+    return res.status(400).send(res.locals.text.invalidTransition);
+  }
+  try {
+    // The current status is part of the UPDATE condition, so concurrent changes cannot skip a step.
+    const result = await (await getPool()).request()
+      .input('id', sql.Int, id)
+      .input('from', sql.NVarChar(20), from)
+      .input('to', sql.NVarChar(20), to)
+      .query('UPDATE dbo.Orders SET Status = @to WHERE Id = @id AND Status = @from');
+    if (result.rowsAffected[0] !== 1) return res.status(409).send(res.locals.text.invalidTransition);
+    res.redirect(`/admin${res.locals.languageQuery}`);
+  } catch (error) {
+    console.error('Could not update order status:', error.code || error.name);
+    res.status(503).send(res.locals.text.statusError);
+  }
+});
+
+// Use localhost by default; set HOST=0.0.0.0 in .env for local Wi-Fi testing.
+if (require.main === module) {
+  app.listen(port, host, () => {
+    console.log(`Server running at http://localhost:${port}`);
   });
 }
 
-// Use localhost by default; set HOST=0.0.0.0 in .env for local Wi-Fi testing.
-app.listen(port, host, () => {
-  console.log(`Server running at http://localhost:${port}`);
-});
+module.exports = app;

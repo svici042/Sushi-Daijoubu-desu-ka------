@@ -1,0 +1,55 @@
+<%- include('partials/header') %>
+<main class="admin-page">
+  <div class="admin-heading">
+    <h1><%= text.adminOrders %></h1>
+    <form action="/admin/logout<%= languageQuery %>" method="post">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+      <button type="submit"><%= text.logout %></button>
+    </form>
+  </div>
+  <p><%= text.newOrders %>: <strong><%= newCount %></strong></p>
+  <form action="/admin" method="get" class="admin-form">
+    <% if (language === 'en') { %><input type="hidden" name="lang" value="en"><% } %>
+    <label for="status-filter"><%= text.filterStatus %></label>
+    <select id="status-filter" name="status">
+      <% for (const value of ['all', 'new', 'preparing', 'ready', 'completed']) { %>
+        <option value="<%= value %>" <% if (filter === value) { %>selected<% } %>>
+          <%= value === 'all' ? text.all : text[statusLabels[value]] %>
+        </option>
+      <% } %>
+    </select>
+    <button type="submit"><%= text.filterStatus %></button>
+  </form>
+  <% if (adminError) { %>
+    <p role="alert"><%= adminError %></p>
+  <% } else if (!orders.length) { %>
+    <p><%= text.noOrders %></p>
+  <% } %>
+  <% for (const order of orders) { %>
+    <article class="admin-order">
+      <h2><%= text.orderNumber %> #<%= order.Id %></h2>
+      <p><%= text.customerName %>: <%= order.CustomerName %></p>
+      <p><%= text.orderDate %>: <time datetime="<%= new Date(order.CreatedAt).toISOString() %>"><%= new Intl.DateTimeFormat(language === 'en' ? 'en-GB' : 'nb-NO', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Europe/Oslo' }).format(new Date(order.CreatedAt)) %></time></p>
+      <p><%= text.status %>: <strong><%= text[statusLabels[order.Status]] || order.Status %></strong></p>
+      <p><%= text.cartTotal %>: <strong><%= money.format(order.TotalOre / 100) %></strong></p>
+      <details>
+        <summary><%= text.orderDetails %></summary>
+        <ul>
+          <% for (const item of itemsByOrder.get(order.Id) || []) { %>
+            <li><%= language === 'en' ? item.NameEn : item.NameNo %> — <%= item.Quantity %> × <%= money.format(item.UnitPriceOre / 100) %> = <%= money.format(item.Quantity * item.UnitPriceOre / 100) %></li>
+          <% } %>
+        </ul>
+      </details>
+      <% if (nextStatus[order.Status]) { %>
+        <form action="/admin/orders/<%= order.Id %>/status<%= languageQuery %>" method="post" class="admin-form">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <input type="hidden" name="from" value="<%= order.Status %>">
+          <input type="hidden" name="to" value="<%= nextStatus[order.Status] %>">
+          <button type="submit"><%= text.nextStatus %>: <%= text[statusLabels[nextStatus[order.Status]]] %></button>
+        </form>
+      <% } %>
+    </article>
+  <% } %>
+</main>
+<%- include('partials/navigation') %>
+<%- include('partials/footer') %>

@@ -21,8 +21,11 @@
   },
   "homepage": "https://github.com/svici042/Sushi-Daijoubu-desu-ka------#readme",
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "ejs": "^7.0.2",
     "express": "^5.3.0",
+    "express-rate-limit": "^8.7.3",
+    "express-session": "^1.19.0",
     "msnodesqlv8": "^6.2.2",
     "mssql": "^12.7.13"
   },

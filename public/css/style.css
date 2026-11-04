@@ -189,6 +189,63 @@ input:focus-visible {
   border-top: 2px solid #d879a0;
 }
 
+/* Admin forms reuse the site colors and stay readable on small screens. */
+.admin-page {
+  max-width: 60rem;
+  margin: 3rem auto;
+  padding: 0 1rem;
+}
+
+.admin-heading,
+.admin-form {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.admin-heading {
+  justify-content: space-between;
+}
+
+.admin-form {
+  margin: 1rem 0;
+}
+
+.admin-form input,
+.admin-form select {
+  padding: 0.55rem;
+  border: 2px solid #352c49;
+  border-radius: 0.5rem;
+  font: inherit;
+}
+
+.admin-page button {
+  padding: 0.55rem 0.8rem;
+  border: 0;
+  border-radius: 0.5rem;
+  color: #fff;
+  background: #352c49;
+  font: inherit;
+  cursor: pointer;
+}
+
+.admin-order {
+  margin: 1rem 0;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  background: #fff;
+  overflow-wrap: anywhere;
+}
+
+.admin-order h2 {
+  margin-top: 0;
+}
+
+.admin-order summary {
+  cursor: pointer;
+}
+
 .placeholder-page {
   max-width: 40rem;
   margin: 4rem auto;

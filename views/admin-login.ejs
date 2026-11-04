@@ -1,0 +1,13 @@
+<%- include('partials/header') %>
+<main class="admin-page">
+  <h1><%= text.adminLogin %></h1>
+  <% if (loginError) { %><p role="alert"><%= loginError %></p><% } %>
+  <form action="/admin/login<%= languageQuery %>" method="post" class="admin-form">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <label for="admin-password"><%= text.password %></label>
+    <input id="admin-password" name="password" type="password" required autocomplete="current-password">
+    <button type="submit"><%= text.login %></button>
+  </form>
+</main>
+<%- include('partials/navigation') %>
+<%- include('partials/footer') %>

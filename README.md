@@ -40,7 +40,9 @@ Install Node.js 22 or newer, SQL Server, and the ODBC Driver for SQL Server. The
 npm ci
 ```
 
-Copy `.env.example` to `.env` and fill in the SQL Server settings. I use `DB_AUTH=sql` with my SQL login. For a local named instance, `DB_SERVER=.\SQLEXPRESS` can be used without setting a port. Run `sql/setup.sql`, then `sql/orders.sql` in SQL Server Management Studio using an account that can create tables. The application's SQL login needs SELECT on Dishes and INSERT on Orders and OrderItems; it does not need schema change permissions.
+Copy `.env.example` to `.env` and fill in the SQL Server and admin settings. Follow the commands in `.env.example` to generate your own bcrypt password hash and random session secret. I use `DB_AUTH=sql` with my SQL login. For a local named instance, `DB_SERVER=.\SQLEXPRESS` can be used without setting a port. Run `sql/setup.sql`, then `sql/orders.sql` in SQL Server Management Studio using an account that can create tables. The application login needs SELECT on Dishes, Orders and OrderItems, UPDATE on Orders, and INSERT on Orders and OrderItems.
+
+Admin sessions use Express's memory store for local development. Before production, use a persistent session store and HTTPS; production cookies are marked Secure.
 
 Start the site with:
 
@@ -57,4 +59,4 @@ Open http://localhost:3000/ in your browser.
 
 ## Status
 
-The menu reads available dishes and allergens from SQL Server. I can filter and search dishes, switch between Norwegian and English, and choose quantities. The cart saves dish IDs and quantities in the browser. Orders ask for a name and save current prices and items in SQL Server. The admin page is still a placeholder.
+The menu reads available dishes and allergens from SQL Server. I can filter and search dishes, switch between Norwegian and English, and choose quantities. The cart saves dish IDs and quantities in the browser. Orders ask for a name and save current prices and items in SQL Server. The protected admin page lists orders and advances their status.
