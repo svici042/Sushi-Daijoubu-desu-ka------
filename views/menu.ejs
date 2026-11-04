@@ -1,22 +1,39 @@
 ﻿<%- include('partials/header') %>
     <main class="menu-page">
-      <h1>Meny</h1>
+      <h1><%= text.menu %></h1>
       <% if (menuError) { %>
         <p role="alert"><%= menuError %></p>
       <% } else { %>
-        <p>Allergeninformasjonen er foreløpig og ikke kontrollert mot leverandørenes etiketter.</p>
+        <p><%= text.allergenWarning %></p>
+
+        <!-- Filters work on the loaded cards, so typing does not query SQL Server. -->
+        <div class="menu-controls">
+          <div class="category-filters" role="group" aria-label="<%= text.filterCategories %>">
+            <button type="button" class="category-button" data-category-filter="all" aria-pressed="true"><%= text.all %></button>
+            <% menuSections.forEach(section => { %>
+              <button type="button" class="category-button" data-category-filter="<%= section.id %>" aria-pressed="false"><%= section.name %></button>
+            <% }); %>
+          </div>
+          <div class="menu-search">
+            <label for="dish-search"><%= text.search %></label>
+            <input id="dish-search" type="search" placeholder="<%= text.searchHint %>" autocomplete="off">
+            <button id="clear-search" type="button" hidden><%= text.clearSearch %></button>
+          </div>
+        </div>
+
+        <p id="menu-no-results" role="status" hidden><%= text.noResults %></p>
 
         <% menuSections.forEach(section => { %>
-          <section class="menu-section">
+          <section class="menu-section" data-menu-section="<%= section.id %>">
             <h2><%= section.name %></h2>
             <% if (section.dishes.length === 0) { %>
-              <p>Ingen retter tilgjengelig akkurat nå.</p>
+              <p><%= text.noDishes %></p>
             <% } %>
             <% section.dishes.forEach(dish => { %>
-              <article class="menu-dish">
+              <article class="menu-dish" data-search="<%= dish.searchText %>">
                 <%# Dishes without a valid local image use the text-only layout. %>
                 <% if (dish.image) { %>
-                  <img class="menu-image" src="<%= dish.image %>" alt="Bilde av <%= dish.name %>">
+                  <img class="menu-image" src="<%= dish.image %>" alt="<%= text.imageAlt %> <%= dish.name %>">
                 <% } %>
                 <div class="menu-details">
                   <h3><%= dish.name %></h3>
@@ -25,10 +42,10 @@
                   <% } %>
                   <%# Soups and sashimi have no piece count in the database. %>
                   <% if (dish.pieces !== null) { %>
-                    <p><%= dish.pieces %> <%= dish.pieces === 1 ? 'bit' : 'biter' %></p>
+                    <p><%= dish.pieces %> <%= dish.pieces === 1 ? text.piece : text.pieces %></p>
                   <% } %>
                   <% if (dish.allergens.length > 0) { %>
-                    <p>Allergener: <%= dish.allergens.join(', ') %></p>
+                    <p><%= text.allergens %>: <%= dish.allergens.join(', ') %></p>
                   <% } %>
                 </div>
                 <p class="menu-price"><%= dish.price %></p>
@@ -39,4 +56,7 @@
       <% } %>
     </main>
 <%- include('partials/navigation') %>
+<% if (!menuError) { %>
+  <script src="/js/menu.js" defer></script>
+<% } %>
 <%- include('partials/footer') %>

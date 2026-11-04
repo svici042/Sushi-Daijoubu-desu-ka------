@@ -10,8 +10,77 @@ const port = process.env.PORT || 3000;
 app.set('view engine', 'ejs');
 app.use(express.static(path.join(__dirname, 'public')));
 
+// The language stays in links, so it follows the visitor between pages.
+const labels = {
+  no: {
+    home: 'Hjem',
+    menu: 'Meny',
+    cart: 'Handlekurv',
+    order: 'Bestilling',
+    admin: 'Admin',
+    explore: 'Utforsk restauranten',
+    administration: 'Administrasjon',
+    welcome: 'Velkommen til vår sushirestaurant!',
+    comingSoon: 'Denne siden kommer senere.',
+    backHome: 'Tilbake til forsiden',
+    all: 'Alle',
+    filterCategories: 'Filtrer kategorier',
+    search: 'Søk etter retter',
+    searchHint: 'Søk på navn eller ingredienser',
+    clearSearch: 'Tøm søk',
+    noResults: 'Ingen retter passer til søket ditt.',
+    noDishes: 'Ingen retter tilgjengelig akkurat nå.',
+    allergens: 'Allergener',
+    allergenWarning: 'Allergeninformasjonen er foreløpig og ikke kontrollert mot leverandørenes etiketter.',
+    piece: 'bit',
+    pieces: 'biter',
+    imageAlt: 'Bilde av',
+    unavailable: 'Menyen er midlertidig utilgjengelig. Prøv igjen senere.',
+    customerNavigation: 'Kundenavigasjon',
+    adminNavigation: 'Adminnavigasjon'
+  },
+  en: {
+    home: 'Home',
+    menu: 'Menu',
+    cart: 'Cart',
+    order: 'Order',
+    admin: 'Admin',
+    explore: 'Explore the restaurant',
+    administration: 'Administration',
+    welcome: 'Welcome to our sushi restaurant!',
+    comingSoon: 'This page is coming later.',
+    backHome: 'Back to the home page',
+    all: 'All',
+    filterCategories: 'Filter categories',
+    search: 'Search dishes',
+    searchHint: 'Search names or ingredients',
+    clearSearch: 'Clear search',
+    noResults: 'No dishes match your search.',
+    noDishes: 'No dishes available right now.',
+    allergens: 'Allergens',
+    allergenWarning: 'Allergen information is preliminary and has not been checked against supplier labels.',
+    piece: 'piece',
+    pieces: 'pieces',
+    imageAlt: 'Image of',
+    unavailable: 'The menu is temporarily unavailable. Please try again later.',
+    customerNavigation: 'Customer navigation',
+    adminNavigation: 'Admin navigation'
+  }
+};
+
+app.use((req, res, next) => {
+  const language = req.query.lang === 'en' ? 'en' : 'no';
+  res.locals.language = language;
+  res.locals.languageQuery = language === 'en' ? '?lang=en' : '';
+  res.locals.text = labels[language];
+  next();
+});
+
 app.get('/', (req, res) => {
-  res.render('index', { title: 'Hjem', currentPage: '/' });
+  res.render('index', {
+    title: res.locals.text.home,
+    currentPage: '/'
+  });
 });
 
 const priceFormatter = new Intl.NumberFormat('nb-NO', {
@@ -60,9 +129,11 @@ app.get('/meny', async (req, res) => {
       ORDER BY da.DishId, a.Id
     `);
 
-    // Group dishes and their allergen names for the EJS page.
+    // Group dishes in database order and choose the visible language.
+    const english = res.locals.language === 'en';
     const menuSections = categories.recordset.map(category => ({
-      name: category.NameNo,
+      id: category.Id,
+      name: english ? category.NameEn : category.NameNo,
       dishes: []
     }));
     const sectionsById = new Map(
@@ -72,8 +143,15 @@ app.get('/meny', async (req, res) => {
 
     for (const dish of dishes.recordset) {
       const menuDish = {
-        name: dish.NameNo,
-        description: dish.DescriptionNo,
+        name: english ? dish.NameEn : dish.NameNo,
+        description: english ? dish.DescriptionEn : dish.DescriptionNo,
+        // Search always includes both languages, whatever is shown on screen.
+        searchText: [
+          dish.NameNo,
+          dish.NameEn,
+          dish.DescriptionNo,
+          dish.DescriptionEn
+        ].filter(Boolean).join(' '),
         price: priceFormatter.format(dish.PriceOre / 100),
         pieces: dish.Pieces,
         image: localImage(dish.ImagePath),
@@ -84,11 +162,13 @@ app.get('/meny', async (req, res) => {
     }
 
     for (const allergen of allergens.recordset) {
-      dishesById.get(allergen.DishId).allergens.push(allergen.NameNo);
+      dishesById.get(allergen.DishId).allergens.push(
+        english ? allergen.NameEn : allergen.NameNo
+      );
     }
 
     res.render('menu', {
-      title: 'Meny',
+      title: res.locals.text.menu,
       currentPage: '/meny',
       menuSections,
       menuError: null
@@ -97,24 +177,27 @@ app.get('/meny', async (req, res) => {
     // Visitors get a friendly message; technical details stay in the server log.
     console.error('Could not load menu:', error.code || error.name);
     res.status(503).render('menu', {
-      title: 'Meny',
+      title: res.locals.text.menu,
       currentPage: '/meny',
       menuSections: [],
-      menuError: 'Menyen er midlertidig utilgjengelig. Prøv igjen senere.'
+      menuError: res.locals.text.unavailable
     });
   }
 });
 
 const placeholderPages = {
-  '/handlekurv': 'Handlekurv',
-  '/bestilling': 'Bestilling',
-  '/admin': 'Admin'
+  '/handlekurv': 'cart',
+  '/bestilling': 'order',
+  '/admin': 'admin'
 };
 
 // These routes keep unfinished navigation links working until their pages are built.
-for (const [route, title] of Object.entries(placeholderPages)) {
+for (const [route, label] of Object.entries(placeholderPages)) {
   app.get(route, (req, res) => {
-    res.render('placeholder', { title, currentPage: route });
+    res.render('placeholder', {
+      title: res.locals.text[label],
+      currentPage: route
+    });
   });
 }
 

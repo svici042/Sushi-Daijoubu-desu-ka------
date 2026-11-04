@@ -1,15 +1,20 @@
 <!doctype html>
-<html lang="nb">
+<html lang="<%= language === 'en' ? 'en' : 'nb' %>">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title><%= title === 'Hjem' ? 'SUSHI Daijoubu desu ka?' : title + ' | SUSHI Daijoubu desu ka?' %></title>
+    <title><%= currentPage === '/' ? 'SUSHI Daijoubu desu ka?' : title + ' | SUSHI Daijoubu desu ka?' %></title>
     <link rel="stylesheet" href="/css/style.css">
   </head>
   <body>
     <header class="site-header">
-      <a class="brand" href="/" aria-label="SUSHI Daijoubu desu ka? – hjem">
-        <img src="/images/Fargerik%20sushi-anime%20med%20sakura%20og%20Fuji%20Logo1.png" alt="Illustrert restaurantlogo med sushi-kokk og lykkekatt">
+      <a class="brand" href="/<%= languageQuery %>" aria-label="SUSHI Daijoubu desu ka? – <%= text.home %>">
+        <img src="/images/Fargerik%20sushi-anime%20med%20sakura%20og%20Fuji%20Logo1.png" alt="<%= language === 'en' ? 'Illustrated restaurant logo with sushi chef and lucky cat' : 'Illustrert restaurantlogo med sushi-kokk og lykkekatt' %>">
       </a>
       <p class="japanese-name" lang="ja">大丈夫ですか？</p>
+      <!-- Language links reload the same page and keep the choice in navigation links. -->
+      <nav class="language-switch" aria-label="Velg språk / Choose language">
+        <a href="<%= currentPage %>" lang="nb" <% if (language === 'no') { %>aria-current="page"<% } %>>NO</a>
+        <a href="<%= currentPage %>?lang=en" lang="en" <% if (language === 'en') { %>aria-current="page"<% } %>>EN</a>
+      </nav>
     </header>

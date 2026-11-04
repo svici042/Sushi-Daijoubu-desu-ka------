@@ -1,8 +1,8 @@
 ﻿<%- include('partials/header') %>
     <main class="placeholder-page">
       <h1><%= title %></h1>
-      <p>Denne siden kommer senere.</p>
-      <a href="/">Tilbake til forsiden</a>
+      <p><%= text.comingSoon %></p>
+      <a href="/<%= languageQuery %>"><%= text.backHome %></a>
     </main>
 <%- include('partials/navigation') %>
 <%- include('partials/footer') %>

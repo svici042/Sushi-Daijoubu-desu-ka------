@@ -1,29 +1,29 @@
-      <nav class="navigation" aria-label="Kundenavigasjon">
-        <h2>Utforsk restauranten</h2>
+      <nav class="navigation" aria-label="<%= text.customerNavigation %>">
+        <h2><%= text.explore %></h2>
         <div class="navigation-grid">
-          <a class="navigation-link" href="/" <% if (currentPage === '/') { %>aria-current="page"<% } %>>
+          <a class="navigation-link" href="/<%= languageQuery %>" <% if (currentPage === '/') { %>aria-current="page"<% } %>>
             <img src="/images/nav-home.png" alt="" width="120" height="120">
-            <span>Hjem</span>
+            <span><%= text.home %></span>
           </a>
-          <a class="navigation-link" href="/meny" <% if (currentPage === '/meny') { %>aria-current="page"<% } %>>
+          <a class="navigation-link" href="/meny<%= languageQuery %>" <% if (currentPage === '/meny') { %>aria-current="page"<% } %>>
             <img src="/images/nav-menu.png" alt="" width="120" height="120">
-            <span>Meny</span>
+            <span><%= text.menu %></span>
           </a>
-          <a class="navigation-link" href="/handlekurv" <% if (currentPage === '/handlekurv') { %>aria-current="page"<% } %>>
+          <a class="navigation-link" href="/handlekurv<%= languageQuery %>" <% if (currentPage === '/handlekurv') { %>aria-current="page"<% } %>>
             <img src="/images/nav-cart.png" alt="" width="120" height="120">
-            <span>Handlekurv</span>
+            <span><%= text.cart %></span>
           </a>
-          <a class="navigation-link" href="/bestilling" <% if (currentPage === '/bestilling') { %>aria-current="page"<% } %>>
+          <a class="navigation-link" href="/bestilling<%= languageQuery %>" <% if (currentPage === '/bestilling') { %>aria-current="page"<% } %>>
             <img src="/images/nav-order.png" alt="" width="120" height="120">
-            <span>Bestilling</span>
+            <span><%= text.order %></span>
           </a>
         </div>
       </nav>
 
-      <nav class="navigation admin-navigation" aria-label="Adminnavigasjon">
-        <h2>Administrasjon</h2>
-        <a class="navigation-link" href="/admin" <% if (currentPage === '/admin') { %>aria-current="page"<% } %>>
+      <nav class="navigation admin-navigation" aria-label="<%= text.adminNavigation %>">
+        <h2><%= text.administration %></h2>
+        <a class="navigation-link" href="/admin<%= languageQuery %>" <% if (currentPage === '/admin') { %>aria-current="page"<% } %>>
           <img src="/images/nav-admin.png" alt="" width="120" height="120">
-          <span>Admin</span>
+          <span><%= text.admin %></span>
         </a>
       </nav>

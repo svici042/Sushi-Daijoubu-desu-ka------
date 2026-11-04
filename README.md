@@ -57,4 +57,4 @@ Open http://localhost:3000/ in your browser.
 
 ## Status
 
-Express and EJS are set up. The home page works, and the menu page reads available dishes and allergens from SQL Server. The cart, ordering and admin pages are placeholders. I will build their features later.
+Express and EJS are set up. The home page works, and the menu page reads available dishes and allergens from SQL Server. I can filter categories, search dishes and switch between Norwegian and English. The cart, ordering and admin pages are placeholders. I will build their features later.
