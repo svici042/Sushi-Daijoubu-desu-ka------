@@ -30,14 +30,21 @@ Norwegian Bokmål will be the default language.
 - Express
 - HTML, CSS, JavaScript
 - EJS
-- Database (not decided yet)
+- SQL Server and the `mssql` / `msnodesqlv8` packages
 
 ## Installation
 
-Install Node.js, then run these commands in the project folder:
+Install Node.js 22 or newer, SQL Server, and the ODBC Driver for SQL Server. Then run this in the project folder:
 
 ```sh
 npm ci
+```
+
+Copy `.env.example` to `.env` and fill in the SQL Server settings. I use `DB_AUTH=sql` with my SQL login. For a local named instance, `DB_SERVER=.\SQLEXPRESS` can be used without setting a port.
+
+Start the site with:
+
+```sh
 npm run dev
 ```
 
@@ -50,4 +57,4 @@ Open http://localhost:3000/ in your browser.
 
 ## Status
 
-Express and EJS are set up. The home page works, and the menu page has temporary example dishes. The cart, ordering and admin pages are placeholders. I will build their features later.
+Express and EJS are set up. The home page works, and the menu page reads available dishes and allergens from SQL Server. The cart, ordering and admin pages are placeholders. I will build their features later.

@@ -1,22 +1,42 @@
 ﻿<%- include('partials/header') %>
     <main class="menu-page">
       <h1>Meny</h1>
-      <p>Dette er midlertidige eksempler. Den endelige menyen kommer senere.</p>
+      <% if (menuError) { %>
+        <p role="alert"><%= menuError %></p>
+      <% } else { %>
+        <p>Allergeninformasjonen er foreløpig og ikke kontrollert mot leverandørenes etiketter.</p>
 
-      <% menuSections.forEach(section => { %>
-        <section class="menu-section">
-          <h2><%= section.name %></h2>
-          <% section.dishes.forEach(dish => { %>
-            <article class="menu-dish">
-              <div>
-                <h3><%= dish.name %></h3>
-                <p><%= dish.description %></p>
-              </div>
-              <p class="menu-price"><%= dish.price %> kr</p>
-            </article>
-          <% }); %>
-        </section>
-      <% }); %>
+        <% menuSections.forEach(section => { %>
+          <section class="menu-section">
+            <h2><%= section.name %></h2>
+            <% if (section.dishes.length === 0) { %>
+              <p>Ingen retter tilgjengelig akkurat nå.</p>
+            <% } %>
+            <% section.dishes.forEach(dish => { %>
+              <article class="menu-dish">
+                <%# Dishes without a valid local image use the text-only layout. %>
+                <% if (dish.image) { %>
+                  <img class="menu-image" src="<%= dish.image %>" alt="Bilde av <%= dish.name %>">
+                <% } %>
+                <div class="menu-details">
+                  <h3><%= dish.name %></h3>
+                  <% if (dish.description) { %>
+                    <p><%= dish.description %></p>
+                  <% } %>
+                  <%# Soups and sashimi have no piece count in the database. %>
+                  <% if (dish.pieces !== null) { %>
+                    <p><%= dish.pieces %> <%= dish.pieces === 1 ? 'bit' : 'biter' %></p>
+                  <% } %>
+                  <% if (dish.allergens.length > 0) { %>
+                    <p>Allergener: <%= dish.allergens.join(', ') %></p>
+                  <% } %>
+                </div>
+                <p class="menu-price"><%= dish.price %></p>
+              </article>
+            <% }); %>
+          </section>
+        <% }); %>
+      <% } %>
     </main>
 <%- include('partials/navigation') %>
 <%- include('partials/footer') %>
