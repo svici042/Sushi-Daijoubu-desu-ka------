@@ -368,6 +368,23 @@ textarea:focus-visible {
   width: auto;
 }
 
+.admin-image-field {
+  display: grid;
+  gap: 0.6rem;
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid #d9d0d8;
+  border-radius: 0.5rem;
+}
+
+.admin-image-field img {
+  max-width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 0.5rem;
+}
+
 .allergen-notice {
   padding-left: 0.75rem;
   border-left: 3px solid #d879a0;

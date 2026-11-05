@@ -7,7 +7,7 @@
       <ul><% for (const error of errors) { %><li><%= error %></li><% } %></ul>
     </div>
   <% } %>
-  <form action="<%= editing ? `/admin/dishes/${dish.Id}` : '/admin/dishes' %><%= languageQuery %>" method="post" class="admin-dish-form">
+  <form action="<%= editing ? `/admin/dishes/${dish.Id}` : '/admin/dishes' %><%= languageQuery %>" method="post" enctype="multipart/form-data" class="admin-dish-form">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <label for="name-no"><%= text.dishNameNo %> *</label>
     <input id="name-no" name="NameNo" value="<%= dish.NameNo %>" maxlength="100" required>
@@ -43,6 +43,21 @@
       <option value="1" <% if (dish.IsAvailable) { %>selected<% } %>><%= text.available %></option>
       <option value="0" <% if (!dish.IsAvailable) { %>selected<% } %>><%= text.notAvailable %></option>
     </select>
+    <fieldset class="admin-image-field">
+      <legend><%= text.dishImage %></legend>
+      <% if (imagePreview) { %>
+        <p><%= text.currentImage %></p>
+        <img src="<%= imagePreview %>" alt="<%= text.imageAlt %> <%= language === 'en' ? dish.NameEn : dish.NameNo %>" width="240" height="180">
+      <% } %>
+      <label for="dish-image"><%= text.dishImage %></label>
+      <input id="dish-image" type="file" name="DishImage" accept="image/jpeg,image/png,image/webp">
+      <% if (editing && imagePreview) { %>
+        <label class="admin-verify">
+          <input type="checkbox" name="RemoveImage" value="1">
+          <%= text.removeImage %>
+        </label>
+      <% } %>
+    </fieldset>
     <%# Checkbox values are submitted as repeated AllergenIds fields. %>
     <fieldset class="admin-allergens">
       <legend><%= text.allergens %></legend>

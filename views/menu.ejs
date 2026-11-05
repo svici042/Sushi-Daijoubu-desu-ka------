@@ -35,7 +35,7 @@
               <article class="menu-dish" data-search="<%= dish.searchText %>">
                 <%# Dishes without a valid local image use the text-only layout. %>
                 <% if (dish.image) { %>
-                  <img class="menu-image" src="<%= dish.image %>" alt="<%= text.imageAlt %> <%= dish.name %>">
+                  <img class="menu-image" src="<%= dish.image %>" alt="<%= text.imageAlt %> <%= dish.name %>" loading="lazy">
                 <% } %>
                 <div class="menu-details">
                   <h3><%= dish.name %></h3>

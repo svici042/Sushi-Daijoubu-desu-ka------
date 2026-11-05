@@ -16,3 +16,6 @@ node_modules/
 # Local files
 .DS_Store
 Thumbs.db
+
+# Uploaded dish photos live with the local database content.
+public/images/dishes/

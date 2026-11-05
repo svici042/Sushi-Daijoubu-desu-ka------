@@ -7,6 +7,8 @@ const crypto = require('node:crypto');
 const session = require('express-session');
 const bcrypt = require('bcryptjs');
 const { rateLimit } = require('express-rate-limit');
+const multer = require('multer');
+const sharp = require('sharp');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -121,7 +123,10 @@ const labels = {
     allergenVerifiedStatus: 'Kontrollert', allergenUnverifiedStatus: 'Ikke kontrollert',
     allergenIdsInvalid: 'Velg gyldige allergener uten duplikater.',
     allergenNotesInvalid: 'Notater kan være maks 1000 tegn.',
-    allergenReview: 'Endringer i allergener eller notater fjerner kontrollstatus. Kontroller og bekreft ved neste lagring.'
+    allergenReview: 'Endringer i allergener eller notater fjerner kontrollstatus. Kontroller og bekreft ved neste lagring.',
+    dishImage: 'Bilde av retten', currentImage: 'Nåværende bilde',
+    removeImage: 'Fjern bildet', imageInvalid: 'Velg et gyldig JPG-, PNG- eller WebP-bilde på maks 5 MB.',
+    imageConflict: 'Velg enten nytt bilde eller fjern bildet.'
   },
   en: {
     home: 'Home',
@@ -204,7 +209,10 @@ const labels = {
     allergenVerifiedStatus: 'Verified', allergenUnverifiedStatus: 'Not verified',
     allergenIdsInvalid: 'Choose valid allergens without duplicates.',
     allergenNotesInvalid: 'Notes can have up to 1000 characters.',
-    allergenReview: 'Changes to allergens or notes clear verification. Review and confirm on the next save.'
+    allergenReview: 'Changes to allergens or notes clear verification. Review and confirm on the next save.',
+    dishImage: 'Dish image', currentImage: 'Current image',
+    removeImage: 'Remove image', imageInvalid: 'Choose a valid JPG, PNG or WebP image up to 5 MB.',
+    imageConflict: 'Choose either a new image or remove the image.'
   }
 };
 
@@ -231,17 +239,23 @@ const priceFormatter = new Intl.NumberFormat('nb-NO', {
   maximumFractionDigits: 2
 });
 
-function localImage(imagePath) {
-  // Show only images that exist in the public images folder.
-  if (!imagePath || !imagePath.startsWith('/images/')) {
-    return null;
-  }
+const dishImageDirectory = path.join(__dirname, 'public', 'images', 'dishes');
 
+function managedDishImage(imagePath) {
+  return typeof imagePath === 'string'
+    && /^\/images\/dishes\/[a-f0-9]{32}\.webp$/.test(imagePath);
+}
+
+function localImage(imagePath) {
+  // Only render known public image paths; never turn a database path into an arbitrary file lookup.
+  if (managedDishImage(imagePath)) {
+    return fs.existsSync(path.join(dishImageDirectory, path.basename(imagePath)))
+      ? imagePath : null;
+  }
+  if (!imagePath || !imagePath.startsWith('/images/')) return null;
   const filename = path.basename(imagePath);
   const file = path.join(__dirname, 'public', 'images', filename);
-  return imagePath === `/images/${filename}` && fs.existsSync(file)
-    ? imagePath
-    : null;
+  return imagePath === `/images/${filename}` && fs.existsSync(file) ? imagePath : null;
 }
 
 app.get('/meny', async (req, res) => {
@@ -463,6 +477,50 @@ function requireAdmin(req, res, next) {
   if (req.session.admin === true) return next();
   if (req.path.startsWith('/api/')) return res.sendStatus(401);
   res.redirect(`/admin/login${res.locals.languageQuery}`);
+}
+
+// Parse only a small in-memory upload after authentication; CSRF is checked from the parsed form.
+const dishUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024, files: 1, fields: 30, parts: 32 }
+}).single('DishImage');
+
+function readDishUpload(req, res, next) {
+  dishUpload(req, res, error => {
+    if (error) return res.status(400).send(res.locals.text.imageInvalid);
+    next();
+  });
+}
+
+async function processDishImage(file) {
+  // Sharp decodes the bytes; extensions and client MIME types are not trusted.
+  const image = sharp(file.buffer, { limitInputPixels: 20_000_000 });
+  const metadata = await image.metadata();
+  const expected = {
+    jpeg: { extensions: ['.jpg', '.jpeg'], mime: 'image/jpeg' },
+    png: { extensions: ['.png'], mime: 'image/png' },
+    webp: { extensions: ['.webp'], mime: 'image/webp' }
+  }[metadata.format];
+  if (!expected
+    || !expected.extensions.includes(path.extname(file.originalname).toLowerCase())
+    || file.mimetype !== expected.mime
+    || !metadata.width || !metadata.height
+    || metadata.width > 10000 || metadata.height > 10000) {
+    throw new Error('Unsupported image');
+  }
+  const output = await image.rotate().resize(1200, 1200, {
+    fit: 'inside', withoutEnlargement: true
+  }).webp({ quality: 80 }).toBuffer();
+  await fs.promises.mkdir(dishImageDirectory, { recursive: true });
+  const filename = `${crypto.randomBytes(16).toString('hex')}.webp`;
+  await fs.promises.writeFile(path.join(dishImageDirectory, filename), output, { flag: 'wx' });
+  return `/images/dishes/${filename}`;
+}
+
+async function deleteManagedImage(imagePath) {
+  if (!managedDishImage(imagePath)) return;
+  await fs.promises.unlink(path.join(dishImageDirectory, path.basename(imagePath)))
+    .catch(error => { if (error.code !== 'ENOENT') throw error; });
 }
 
 app.get('/admin/login', (req, res) => {
@@ -782,7 +840,8 @@ function renderDishForm(req, res, { dish, categories, allergens, errors = [], st
   res.status(status).render('admin-dish-form', {
     title: editing ? res.locals.text.editDish : res.locals.text.addDish,
     currentPage: '/admin/dishes', csrfToken: csrfToken(req),
-    dish, categories, allergens, errors, editing
+    dish, categories, allergens, errors, editing,
+    imagePreview: localImage(dish.ImagePath)
   });
 }
 
@@ -828,7 +887,8 @@ app.get('/admin/dishes/new', requireAdmin, async (req, res) => {
     renderDishForm(req, res, {
       dish: { NameNo: '', NameEn: '', DescriptionNo: '', DescriptionEn: '',
         CategoryId: null, PriceNok: '', Pieces: null, IsAvailable: true,
-        AllergenIds: [], AllergenNotes: '', AdditiveNotes: '', AllergensVerified: false },
+        AllergenIds: [], AllergenNotes: '', AdditiveNotes: '', AllergensVerified: false,
+        ImagePath: null },
       categories: await dishCategories(), allergens: await dishAllergens()
     });
   } catch (error) {
@@ -846,7 +906,7 @@ app.get('/admin/dishes/:id/edit', requireAdmin, async (req, res) => {
     const dish = (await (await getPool()).request().input('id', sql.Int, id)
       .query(`SELECT Id, CategoryId, NameNo, NameEn, DescriptionNo, DescriptionEn,
                      PriceOre, Pieces, IsAvailable, AllergenNotes, AdditiveNotes,
-                     AllergensVerified FROM dbo.Dishes WHERE Id = @id`)).recordset[0];
+                     AllergensVerified, ImagePath FROM dbo.Dishes WHERE Id = @id`)).recordset[0];
     if (!dish) return res.status(404).send(res.locals.text.dishNotFound);
     dish.AllergenIds = (await (await getPool()).request().input('id', sql.Int, id)
       .query('SELECT AllergenId FROM dbo.DishAllergens WHERE DishId = @id'))
@@ -872,11 +932,38 @@ async function saveDish(req, res, editing) {
     return res.status(503).send(res.locals.text.dishSaveError);
   }
   const { dish, errors } = parseDish(req.body, categories, allergens, res.locals.text);
+  const removeImage = req.body.RemoveImage === '1';
+  if (req.body.RemoveImage !== undefined && req.body.RemoveImage !== '1') {
+    errors.push(res.locals.text.imageInvalid);
+  }
+  if (removeImage && req.file) errors.push(res.locals.text.imageConflict);
+  if (editing) {
+    try {
+      dish.ImagePath = (await (await getPool()).request().input('id', sql.Int, id)
+        .query('SELECT ImagePath FROM dbo.Dishes WHERE Id = @id')).recordset[0]?.ImagePath || null;
+    } catch (error) {
+      console.error('Could not load dish image:', error.code || error.name);
+      return res.status(503).send(res.locals.text.dishLoadError);
+    }
+  }
   // Re-render invalid input so the administrator can correct it without losing the form.
   if (errors.length) return renderDishForm(req, res, {
     dish: { ...dish, Id: id }, categories, allergens, errors, status: 400, editing
   });
+  let newImagePath = null;
+  if (req.file) {
+    try {
+      newImagePath = await processDishImage(req.file);
+    } catch (error) {
+      console.error('Could not process dish image:', error.code || error.name);
+      return renderDishForm(req, res, {
+        dish: { ...dish, Id: id }, categories, allergens,
+        errors: [res.locals.text.imageInvalid], status: 400, editing
+      });
+    }
+  }
   let transaction;
+  let oldImagePath = null;
   try {
     transaction = new sql.Transaction(await getPool());
     await transaction.begin();
@@ -898,12 +985,15 @@ async function saveDish(req, res, editing) {
     // Lock the current dish and links until both the dish and allergens are saved.
     if (editing) {
       const current = (await new sql.Request(transaction).input('id', sql.Int, id)
-        .query(`SELECT AllergenNotes, AdditiveNotes, AllergensVerified
+        .query(`SELECT AllergenNotes, AdditiveNotes, AllergensVerified, ImagePath
                 FROM dbo.Dishes WITH (UPDLOCK, HOLDLOCK) WHERE Id = @id`)).recordset[0];
       if (!current) {
         await transaction.rollback();
+        if (newImagePath) await deleteManagedImage(newImagePath);
         return res.status(404).send(res.locals.text.dishNotFound);
       }
+      oldImagePath = current.ImagePath;
+      const imagePath = removeImage ? null : newImagePath || oldImagePath;
       oldIds = (await new sql.Request(transaction).input('id', sql.Int, id)
         .query('SELECT AllergenId FROM dbo.DishAllergens WITH (UPDLOCK, HOLDLOCK) WHERE DishId = @id'))
         .recordset.map(link => link.AllergenId);
@@ -914,24 +1004,25 @@ async function saveDish(req, res, editing) {
       // A changed allergen record requires a later, separate verification save.
       verified = !linksChanged && !notesChanged && dish.AllergensVerified;
       await request.input('id', sql.Int, id)
-        .input('verified', sql.Bit, verified).query(`
+        .input('verified', sql.Bit, verified)
+        .input('imagePath', sql.NVarChar(255), imagePath).query(`
         UPDATE dbo.Dishes SET CategoryId = @categoryId, NameNo = @nameNo,
           NameEn = @nameEn, DescriptionNo = @descriptionNo,
           DescriptionEn = @descriptionEn, PriceOre = @priceOre,
           Pieces = @pieces, IsAvailable = @available,
           AllergenNotes = @allergenNotes, AdditiveNotes = @additiveNotes,
-          AllergensVerified = @verified
+          AllergensVerified = @verified, ImagePath = @imagePath
         WHERE Id = @id
       `);
     } else {
       // A new dish always starts unverified, even if the checkbox was submitted.
-      dishIdToSave = (await request.query(`
+      dishIdToSave = (await request.input('imagePath', sql.NVarChar(255), newImagePath).query(`
         INSERT INTO dbo.Dishes (CategoryId, NameNo, NameEn, DescriptionNo,
           DescriptionEn, PriceOre, Pieces, ImagePath, IsAvailable,
           AllergenNotes, AdditiveNotes, AllergensVerified)
         OUTPUT INSERTED.Id
         VALUES (@categoryId, @nameNo, @nameEn, @descriptionNo,
-          @descriptionEn, @priceOre, @pieces, NULL, @available,
+          @descriptionEn, @priceOre, @pieces, @imagePath, @available,
           @allergenNotes, @additiveNotes, 0)
       `)).recordset[0].Id;
     }
@@ -947,10 +1038,27 @@ async function saveDish(req, res, editing) {
         .query('INSERT INTO dbo.DishAllergens (DishId, AllergenId) VALUES (@dishId, @allergenId)');
     }
     await transaction.commit();
+    // Delete only generated images after SQL points elsewhere and no dish still shares them.
+    if (oldImagePath && oldImagePath !== newImagePath && (removeImage || newImagePath)
+      && managedDishImage(oldImagePath)) {
+      try {
+        const references = await (await getPool()).request()
+          .input('imagePath', sql.NVarChar(255), oldImagePath)
+          .query('SELECT COUNT(*) AS RefCount FROM dbo.Dishes WHERE ImagePath = @imagePath');
+        if (references.recordset[0].RefCount === 0) await deleteManagedImage(oldImagePath);
+      } catch (error) {
+        console.error('Could not clean up old dish image:', error.code || error.name);
+      }
+    }
     res.redirect(`/admin/dishes${res.locals.languageQuery}${res.locals.languageQuery ? '&' : '?'}saved=${editing ? 'updated' : 'created'}`);
   } catch (error) {
     if (transaction) {
       try { await transaction.rollback(); } catch { /* The transaction may already be closed. */ }
+    }
+    if (newImagePath) {
+      try { await deleteManagedImage(newImagePath); } catch (cleanupError) {
+        console.error('Could not clean up new dish image:', cleanupError.code || cleanupError.name);
+      }
     }
     console.error('Could not save dish:', error.code || error.name);
     renderDishForm(req, res, {
@@ -961,8 +1069,10 @@ async function saveDish(req, res, editing) {
   }
 }
 
-app.post('/admin/dishes', requireAdmin, checkCsrf, (req, res) => saveDish(req, res, false));
-app.post('/admin/dishes/:id', requireAdmin, checkCsrf, (req, res) => saveDish(req, res, true));
+app.post('/admin/dishes', requireAdmin, readDishUpload, checkCsrf,
+  (req, res) => saveDish(req, res, false));
+app.post('/admin/dishes/:id', requireAdmin, readDishUpload, checkCsrf,
+  (req, res) => saveDish(req, res, true));
 
 app.post('/admin/dishes/:id/availability', requireAdmin, checkCsrf, async (req, res) => {
   const id = dishId(req.params.id);
