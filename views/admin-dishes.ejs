@@ -32,6 +32,7 @@
           <th scope="col"><%= text.priceNok %></th>
           <th scope="col"><%= text.portion %></th>
           <th scope="col"><%= text.availability %></th>
+          <th scope="col"><%= text.allergens %></th>
           <th scope="col"><%= text.editDish %></th>
         </tr></thead>
         <tbody>
@@ -49,6 +50,7 @@
                   <button type="submit"><%= dish.IsAvailable ? text.notAvailable : text.available %></button>
                 </form>
               </td>
+              <td><%= dish.AllergensVerified ? text.allergenVerifiedStatus : text.allergenUnverifiedStatus %></td>
               <td><a href="/admin/dishes/<%= dish.Id %>/edit<%= languageQuery %>"><%= text.editDish %></a></td>
             </tr>
           <% } %>

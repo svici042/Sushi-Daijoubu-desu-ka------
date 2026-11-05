@@ -43,6 +43,31 @@
       <option value="1" <% if (dish.IsAvailable) { %>selected<% } %>><%= text.available %></option>
       <option value="0" <% if (!dish.IsAvailable) { %>selected<% } %>><%= text.notAvailable %></option>
     </select>
+    <%# Checkbox values are submitted as repeated AllergenIds fields. %>
+    <fieldset class="admin-allergens">
+      <legend><%= text.allergens %></legend>
+      <div class="admin-allergen-grid">
+        <% for (const allergen of allergens) { %>
+          <label>
+            <input type="checkbox" name="AllergenIds" value="<%= allergen.Id %>"
+              <% if (dish.AllergenIds.includes(allergen.Id)) { %>checked<% } %>>
+            <%= language === 'en' ? allergen.NameEn : allergen.NameNo %>
+          </label>
+        <% } %>
+      </div>
+    </fieldset>
+    <label for="allergen-notes"><%= text.allergenNotes %></label>
+    <textarea id="allergen-notes" name="AllergenNotes" maxlength="1000"><%= dish.AllergenNotes || '' %></textarea>
+    <label for="additive-notes"><%= text.additiveNotes %></label>
+    <textarea id="additive-notes" name="AdditiveNotes" maxlength="1000"><%= dish.AdditiveNotes || '' %></textarea>
+    <p><%= text.allergenReview %></p>
+    <p><strong><%= dish.AllergensVerified ? text.allergenVerifiedStatus : text.allergenUnverifiedStatus %></strong></p>
+    <% if (editing) { %>
+      <label class="admin-verify">
+        <input type="checkbox" name="AllergensVerified" value="1" <% if (dish.AllergensVerified) { %>checked<% } %>>
+        <%= text.allergensVerified %>
+      </label>
+    <% } %>
     <button type="submit"><%= text.saveDish %></button>
   </form>
 </main>

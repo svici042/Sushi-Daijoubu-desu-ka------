@@ -4,7 +4,6 @@
       <% if (menuError) { %>
         <p role="alert"><%= menuError %></p>
       <% } else { %>
-        <p><%= text.allergenWarning %></p>
 
         <!-- Filters work on the loaded cards, so typing does not query SQL Server. -->
         <div class="menu-controls">
@@ -49,6 +48,9 @@
                   <% } %>
                   <% if (dish.allergens.length > 0) { %>
                     <p><%= text.allergens %>: <%= dish.allergens.join(', ') %></p>
+                  <% } %>
+                  <% if (!dish.allergensVerified) { %>
+                    <p class="allergen-notice"><%= text.allergenUnverified %></p>
                   <% } %>
                 </div>
                 <p class="menu-price"><%= dish.price %></p>

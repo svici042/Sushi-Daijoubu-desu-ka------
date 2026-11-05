@@ -343,6 +343,36 @@ textarea:focus-visible {
   margin: 0;
 }
 
+.admin-allergens {
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid #d9d0d8;
+  border-radius: 0.5rem;
+}
+
+.admin-allergen-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 0.7rem;
+}
+
+.admin-allergen-grid label,
+.admin-verify {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.admin-dish-form .admin-allergen-grid input,
+.admin-dish-form .admin-verify input {
+  width: auto;
+}
+
+.allergen-notice {
+  padding-left: 0.75rem;
+  border-left: 3px solid #d879a0;
+}
+
 .placeholder-page {
   max-width: 40rem;
   margin: 4rem auto;

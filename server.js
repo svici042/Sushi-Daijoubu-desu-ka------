@@ -114,7 +114,14 @@ const labels = {
     categoryDuplicate: 'Et navn er allerede i bruk.', categoryInvalid: 'Begge navn må fylles ut (maks 100 tegn).',
     categoryError: 'Kunne ikke lagre kategorien.', categoryLoadError: 'Kunne ikke hente kategorier.',
     categoryNotFound: 'Kategorien finnes ikke.', invalidCategoryId: 'Ugyldig kategori-ID.',
-    categoryQuick: 'Opprett ny kategori her', noCategories: 'Ingen kategorier funnet.'
+    categoryQuick: 'Opprett ny kategori her', noCategories: 'Ingen kategorier funnet.',
+    allergenNotes: 'Allergennotater', additiveNotes: 'Tilsetningsstoffer',
+    allergensVerified: 'Allergeninformasjon kontrollert',
+    allergenUnverified: 'Allergeninformasjonen for denne retten er ikke kontrollert.',
+    allergenVerifiedStatus: 'Kontrollert', allergenUnverifiedStatus: 'Ikke kontrollert',
+    allergenIdsInvalid: 'Velg gyldige allergener uten duplikater.',
+    allergenNotesInvalid: 'Notater kan være maks 1000 tegn.',
+    allergenReview: 'Endringer i allergener eller notater fjerner kontrollstatus. Kontroller og bekreft ved neste lagring.'
   },
   en: {
     home: 'Home',
@@ -190,7 +197,14 @@ const labels = {
     categoryDuplicate: 'A name is already in use.', categoryInvalid: 'Both names are required (maximum 100 characters).',
     categoryError: 'Could not save the category.', categoryLoadError: 'Could not load categories.',
     categoryNotFound: 'Category not found.', invalidCategoryId: 'Invalid category ID.',
-    categoryQuick: 'Create a category here', noCategories: 'No categories found.'
+    categoryQuick: 'Create a category here', noCategories: 'No categories found.',
+    allergenNotes: 'Allergen notes', additiveNotes: 'Additive notes',
+    allergensVerified: 'Allergen information verified',
+    allergenUnverified: 'Allergen information for this dish has not been verified.',
+    allergenVerifiedStatus: 'Verified', allergenUnverifiedStatus: 'Not verified',
+    allergenIdsInvalid: 'Choose valid allergens without duplicates.',
+    allergenNotesInvalid: 'Notes can have up to 1000 characters.',
+    allergenReview: 'Changes to allergens or notes clear verification. Review and confirm on the next save.'
   }
 };
 
@@ -242,7 +256,7 @@ app.get('/meny', async (req, res) => {
     `);
     const dishes = await pool.request().query(`
       SELECT Id, CategoryId, NameNo, NameEn, DescriptionNo, DescriptionEn,
-             PriceOre, Pieces, ImagePath, IsAvailable
+             PriceOre, Pieces, ImagePath, IsAvailable, AllergensVerified
       FROM dbo.Dishes
       WHERE IsAvailable = 1
       ORDER BY CategoryId, Id
@@ -283,7 +297,8 @@ app.get('/meny', async (req, res) => {
         price: priceFormatter.format(dish.PriceOre / 100),
         pieces: dish.Pieces,
         image: localImage(dish.ImagePath),
-        allergens: []
+        allergens: [],
+        allergensVerified: dish.AllergensVerified
       };
       sectionsById.get(dish.CategoryId).dishes.push(menuDish);
       dishesById.set(dish.Id, menuDish);
@@ -572,7 +587,7 @@ function dishId(value) {
     && Number(value) <= 2147483647 ? Number(value) : null;
 }
 
-function parseDish(body, categories, text) {
+function parseDish(body, categories, allergens, text) {
   // Treat unexpected types as empty input, then apply the same limits as the SQL columns.
   const errors = [];
   const nameNo = typeof body.NameNo === 'string' ? body.NameNo.trim() : '';
@@ -588,6 +603,12 @@ function parseDish(body, categories, text) {
   const piecesText = typeof body.Pieces === 'string' ? body.Pieces.trim() : '';
   const pieces = piecesText === '' ? null : dishId(piecesText);
   const available = body.IsAvailable === '1';
+  const allergenNotes = typeof body.AllergenNotes === 'string' ? body.AllergenNotes.trim() : '';
+  const additiveNotes = typeof body.AdditiveNotes === 'string' ? body.AdditiveNotes.trim() : '';
+  const submittedIds = body.AllergenIds === undefined ? []
+    : Array.isArray(body.AllergenIds) ? body.AllergenIds : [body.AllergenIds];
+  const allergenIds = submittedIds.map(dishId);
+  const verified = body.AllergensVerified === '1';
 
   // The category must still exist when the dish is submitted, including after quick creation.
   if (!nameNo || !nameEn || nameNo.length > 100 || nameEn.length > 100) errors.push(text.nameRequired);
@@ -597,18 +618,35 @@ function parseDish(body, categories, text) {
   if (priceOre === null || priceOre < 0 || priceOre > 2147483647) errors.push(text.priceInvalid);
   if (piecesText !== '' && !pieces) errors.push(text.portionInvalid);
   if (!['0', '1'].includes(body.IsAvailable)) errors.push(text.dishInvalid);
+  if ((body.AllergenNotes !== undefined && typeof body.AllergenNotes !== 'string')
+    || (body.AdditiveNotes !== undefined && typeof body.AdditiveNotes !== 'string')
+    || allergenNotes.length > 1000 || additiveNotes.length > 1000) {
+    errors.push(text.allergenNotesInvalid);
+  }
+  if (submittedIds.some(id => typeof id !== 'string')
+    || allergenIds.some(id => !id || !allergens.some(allergen => allergen.Id === id))
+    || new Set(allergenIds).size !== allergenIds.length) errors.push(text.allergenIdsInvalid);
+  if (body.AllergensVerified !== undefined && body.AllergensVerified !== '1') errors.push(text.dishInvalid);
 
   return {
     errors,
     dish: { NameNo: nameNo, NameEn: nameEn, DescriptionNo: descriptionNo,
       DescriptionEn: descriptionEn, CategoryId: categoryId, PriceOre: priceOre,
-      PriceNok: priceText, Pieces: pieces, IsAvailable: available }
+      PriceNok: priceText, Pieces: pieces, IsAvailable: available,
+      AllergenNotes: allergenNotes, AdditiveNotes: additiveNotes,
+      AllergenIds: allergenIds, AllergensVerified: verified }
   };
 }
 
 async function dishCategories() {
   return (await (await getPool()).request().query(
     'SELECT Id, NameNo, NameEn FROM dbo.Categories ORDER BY Id'
+  )).recordset;
+}
+
+async function dishAllergens() {
+  return (await (await getPool()).request().query(
+    'SELECT Id, NameNo, NameEn FROM dbo.Allergens ORDER BY Id'
   )).recordset;
 }
 
@@ -740,11 +778,11 @@ app.post('/admin/categories', requireAdmin, checkCsrf, (req, res) => saveCategor
 app.post('/admin/categories/quick', requireAdmin, checkCsrf, (req, res) => saveCategory(req, res));
 app.post('/admin/categories/:id', requireAdmin, checkCsrf, (req, res) => saveCategory(req, res, true));
 
-function renderDishForm(req, res, { dish, categories, errors = [], status = 200, editing = false }) {
+function renderDishForm(req, res, { dish, categories, allergens, errors = [], status = 200, editing = false }) {
   res.status(status).render('admin-dish-form', {
     title: editing ? res.locals.text.editDish : res.locals.text.addDish,
     currentPage: '/admin/dishes', csrfToken: csrfToken(req),
-    dish, categories, errors, editing
+    dish, categories, allergens, errors, editing
   });
 }
 
@@ -764,7 +802,8 @@ app.get('/admin/dishes', requireAdmin, async (req, res) => {
     dishes = (await (await getPool()).request()
       .input('search', sql.NVarChar(202), `%${search.replace(/[\[%_]/g, '[$&]')}%`)
       .input('category', sql.Int, category)
-      .query(`SELECT d.Id, d.NameNo, d.NameEn, d.PriceOre, d.Pieces, d.IsAvailable,
+      .query(`SELECT d.Id, d.NameNo, d.NameEn, d.PriceOre, d.Pieces,
+                     d.IsAvailable, d.AllergensVerified,
                      c.NameNo AS CategoryNo, c.NameEn AS CategoryEn
               FROM dbo.Dishes AS d
               JOIN dbo.Categories AS c ON c.Id = d.CategoryId
@@ -788,8 +827,9 @@ app.get('/admin/dishes/new', requireAdmin, async (req, res) => {
   try {
     renderDishForm(req, res, {
       dish: { NameNo: '', NameEn: '', DescriptionNo: '', DescriptionEn: '',
-        CategoryId: null, PriceNok: '', Pieces: null, IsAvailable: true },
-      categories: await dishCategories()
+        CategoryId: null, PriceNok: '', Pieces: null, IsAvailable: true,
+        AllergenIds: [], AllergenNotes: '', AdditiveNotes: '', AllergensVerified: false },
+      categories: await dishCategories(), allergens: await dishAllergens()
     });
   } catch (error) {
     console.error('Could not load dish form:', error.code || error.name);
@@ -802,12 +842,17 @@ app.get('/admin/dishes/:id/edit', requireAdmin, async (req, res) => {
   if (!id) return res.status(400).send(res.locals.text.invalidDishId);
   try {
     const categories = await dishCategories();
+    const allergens = await dishAllergens();
     const dish = (await (await getPool()).request().input('id', sql.Int, id)
       .query(`SELECT Id, CategoryId, NameNo, NameEn, DescriptionNo, DescriptionEn,
-                     PriceOre, Pieces, IsAvailable FROM dbo.Dishes WHERE Id = @id`)).recordset[0];
+                     PriceOre, Pieces, IsAvailable, AllergenNotes, AdditiveNotes,
+                     AllergensVerified FROM dbo.Dishes WHERE Id = @id`)).recordset[0];
     if (!dish) return res.status(404).send(res.locals.text.dishNotFound);
+    dish.AllergenIds = (await (await getPool()).request().input('id', sql.Int, id)
+      .query('SELECT AllergenId FROM dbo.DishAllergens WHERE DishId = @id'))
+      .recordset.map(link => link.AllergenId);
     dish.PriceNok = `${Math.floor(dish.PriceOre / 100)},${String(dish.PriceOre % 100).padStart(2, '0')}`;
-    renderDishForm(req, res, { dish, categories, editing: true });
+    renderDishForm(req, res, { dish, categories, allergens, editing: true });
   } catch (error) {
     console.error('Could not load dish:', error.code || error.name);
     res.status(503).send(res.locals.text.dishLoadError);
@@ -818,19 +863,24 @@ async function saveDish(req, res, editing) {
   const id = editing ? dishId(req.params.id) : null;
   if (editing && !id) return res.status(400).send(res.locals.text.invalidDishId);
   let categories;
+  let allergens;
   try {
     categories = await dishCategories();
+    allergens = await dishAllergens();
   } catch (error) {
     console.error('Could not load categories:', error.code || error.name);
     return res.status(503).send(res.locals.text.dishSaveError);
   }
-  const { dish, errors } = parseDish(req.body, categories, res.locals.text);
+  const { dish, errors } = parseDish(req.body, categories, allergens, res.locals.text);
   // Re-render invalid input so the administrator can correct it without losing the form.
   if (errors.length) return renderDishForm(req, res, {
-    dish: { ...dish, Id: id }, categories, errors, status: 400, editing
+    dish: { ...dish, Id: id }, categories, allergens, errors, status: 400, editing
   });
+  let transaction;
   try {
-    const request = (await getPool()).request()
+    transaction = new sql.Transaction(await getPool());
+    await transaction.begin();
+    const request = new sql.Request(transaction)
       .input('categoryId', sql.Int, dish.CategoryId)
       .input('nameNo', sql.NVarChar(100), dish.NameNo)
       .input('nameEn', sql.NVarChar(100), dish.NameEn)
@@ -838,30 +888,74 @@ async function saveDish(req, res, editing) {
       .input('descriptionEn', sql.NVarChar(500), dish.DescriptionEn || null)
       .input('priceOre', sql.Int, dish.PriceOre)
       .input('pieces', sql.Int, dish.Pieces)
-      .input('available', sql.Bit, dish.IsAvailable);
-    // Update only fields present in this form; image and allergen data stay untouched.
+      .input('available', sql.Bit, dish.IsAvailable)
+      .input('allergenNotes', sql.NVarChar(1000), dish.AllergenNotes || null)
+      .input('additiveNotes', sql.NVarChar(1000), dish.AdditiveNotes || null);
+    let dishIdToSave = id;
+    let oldIds = [];
+    let verified = false;
+
+    // Lock the current dish and links until both the dish and allergens are saved.
     if (editing) {
-      const result = await request.input('id', sql.Int, id).query(`
+      const current = (await new sql.Request(transaction).input('id', sql.Int, id)
+        .query(`SELECT AllergenNotes, AdditiveNotes, AllergensVerified
+                FROM dbo.Dishes WITH (UPDLOCK, HOLDLOCK) WHERE Id = @id`)).recordset[0];
+      if (!current) {
+        await transaction.rollback();
+        return res.status(404).send(res.locals.text.dishNotFound);
+      }
+      oldIds = (await new sql.Request(transaction).input('id', sql.Int, id)
+        .query('SELECT AllergenId FROM dbo.DishAllergens WITH (UPDLOCK, HOLDLOCK) WHERE DishId = @id'))
+        .recordset.map(link => link.AllergenId);
+      const linksChanged = oldIds.length !== dish.AllergenIds.length
+        || oldIds.some(oldId => !dish.AllergenIds.includes(oldId));
+      const notesChanged = (current.AllergenNotes || '') !== dish.AllergenNotes
+        || (current.AdditiveNotes || '') !== dish.AdditiveNotes;
+      // A changed allergen record requires a later, separate verification save.
+      verified = !linksChanged && !notesChanged && dish.AllergensVerified;
+      await request.input('id', sql.Int, id)
+        .input('verified', sql.Bit, verified).query(`
         UPDATE dbo.Dishes SET CategoryId = @categoryId, NameNo = @nameNo,
           NameEn = @nameEn, DescriptionNo = @descriptionNo,
           DescriptionEn = @descriptionEn, PriceOre = @priceOre,
-          Pieces = @pieces, IsAvailable = @available
+          Pieces = @pieces, IsAvailable = @available,
+          AllergenNotes = @allergenNotes, AdditiveNotes = @additiveNotes,
+          AllergensVerified = @verified
         WHERE Id = @id
       `);
-      if (result.rowsAffected[0] !== 1) return res.status(404).send(res.locals.text.dishNotFound);
     } else {
-      await request.query(`
+      // A new dish always starts unverified, even if the checkbox was submitted.
+      dishIdToSave = (await request.query(`
         INSERT INTO dbo.Dishes (CategoryId, NameNo, NameEn, DescriptionNo,
-          DescriptionEn, PriceOre, Pieces, ImagePath, IsAvailable, AllergensVerified)
+          DescriptionEn, PriceOre, Pieces, ImagePath, IsAvailable,
+          AllergenNotes, AdditiveNotes, AllergensVerified)
+        OUTPUT INSERTED.Id
         VALUES (@categoryId, @nameNo, @nameEn, @descriptionNo,
-          @descriptionEn, @priceOre, @pieces, NULL, @available, 0)
-      `);
+          @descriptionEn, @priceOre, @pieces, NULL, @available,
+          @allergenNotes, @additiveNotes, 0)
+      `)).recordset[0].Id;
     }
+    // Change only links that differ, preserving the others on unrelated dish edits.
+    for (const oldId of oldIds.filter(oldId => !dish.AllergenIds.includes(oldId))) {
+      await new sql.Request(transaction).input('dishId', sql.Int, dishIdToSave)
+        .input('allergenId', sql.Int, oldId)
+        .query('DELETE FROM dbo.DishAllergens WHERE DishId = @dishId AND AllergenId = @allergenId');
+    }
+    for (const newId of dish.AllergenIds.filter(newId => !oldIds.includes(newId))) {
+      await new sql.Request(transaction).input('dishId', sql.Int, dishIdToSave)
+        .input('allergenId', sql.Int, newId)
+        .query('INSERT INTO dbo.DishAllergens (DishId, AllergenId) VALUES (@dishId, @allergenId)');
+    }
+    await transaction.commit();
     res.redirect(`/admin/dishes${res.locals.languageQuery}${res.locals.languageQuery ? '&' : '?'}saved=${editing ? 'updated' : 'created'}`);
   } catch (error) {
+    if (transaction) {
+      try { await transaction.rollback(); } catch { /* The transaction may already be closed. */ }
+    }
     console.error('Could not save dish:', error.code || error.name);
     renderDishForm(req, res, {
-      dish: { ...dish, Id: id }, categories, errors: [res.locals.text.dishSaveError],
+      dish: { ...dish, Id: id }, categories, allergens,
+      errors: [res.locals.text.dishSaveError],
       status: 503, editing
     });
   }

@@ -40,7 +40,7 @@ Install Node.js 22 or newer, SQL Server, and the ODBC Driver for SQL Server. The
 npm ci
 ```
 
-Copy `.env.example` to `.env` and fill in the SQL Server and admin settings. Follow the commands in `.env.example` to generate your own bcrypt password hash and random session secret. I use `DB_AUTH=sql` with my SQL login. For a local named instance, `DB_SERVER=.\SQLEXPRESS` can be used without setting a port. Run `sql/setup.sql`, then `sql/orders.sql` in SQL Server Management Studio using an account that can create tables. The application login needs SELECT on Categories, Dishes, Allergens, DishAllergens, Orders and OrderItems; UPDATE on Orders and Dishes; and INSERT on Orders, OrderItems and Dishes. Grant the Dishes permissions and INSERT/UPDATE on Categories manually if needed.
+Copy `.env.example` to `.env` and fill in the SQL Server and admin settings. Follow the commands in `.env.example` to generate your own bcrypt password hash and random session secret. I use `DB_AUTH=sql` with my SQL login. For a local named instance, `DB_SERVER=.\SQLEXPRESS` can be used without setting a port. Run `sql/setup.sql`, then `sql/orders.sql` in SQL Server Management Studio using an account that can create tables. The application login needs SELECT on Categories, Dishes, Allergens, DishAllergens, Orders and OrderItems; UPDATE on Orders and Dishes; and INSERT on Orders, OrderItems and Dishes. Grant the Dishes and Categories permissions and INSERT/DELETE on DishAllergens manually if needed.
 
 Admin sessions use Express's memory store for local development. Before production, use a persistent session store and HTTPS; production cookies are marked Secure.
 
@@ -59,4 +59,4 @@ Open http://localhost:3000/ in your browser.
 
 ## Status
 
-The menu reads available dishes and allergens from SQL Server. I can filter and search dishes, switch between Norwegian and English, and choose quantities. The cart saves dish IDs and quantities in the browser. Orders ask for a name and save current prices and items in SQL Server. The protected admin pages list orders, advance their status, and manage dishes, availability and categories. I can also add a category while filling in a dish form.
+The menu reads available dishes and allergens from SQL Server. I can filter and search dishes, switch between Norwegian and English, and choose quantities. The cart saves dish IDs and quantities in the browser. Orders ask for a name and save current prices and items in SQL Server. The protected admin pages list orders, advance their status, and manage dishes, availability and categories. I can also add a category while filling in a dish form and manage dish allergens and notes. Changed allergen information must be checked again before it is marked verified.
