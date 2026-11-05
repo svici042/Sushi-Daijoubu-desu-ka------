@@ -1,4 +1,4 @@
-﻿# SUSHI Daijoubu desu ka? (å¤§ä¸ˆå¤«ã§ã™ã‹ï¼Ÿ)
+﻿# SUSHI Daijoubu desu ka? (大丈夫ですか？)
 
 Sushi restaurant website.
 
