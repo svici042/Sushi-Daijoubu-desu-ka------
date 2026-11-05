@@ -1,0 +1,39 @@
+<%- include('partials/header') %>
+<main class="admin-page">
+  <%# Shared navigation keeps Orders, Dishes and Categories together. %>
+  <%- include('partials/admin-controls') %>
+  <div class="admin-heading">
+    <h1><%= text.adminCategories %></h1>
+    <a class="admin-action" href="/admin/categories/new<%= languageQuery %>"><%= text.newCategory %></a>
+  </div>
+  <% if (success) { %><p role="status"><%= success %></p><% } %>
+  <%# Keep database errors separate from a genuinely empty category list. %>
+  <% if (error) { %>
+    <p role="alert"><%= error %></p>
+  <% } else if (!categories.length) { %>
+    <p><%= text.noCategories %></p>
+  <% } else { %>
+    <div class="admin-table-scroll">
+      <table class="admin-table">
+        <thead><tr>
+          <th scope="col"><%= text.dishNameNo %></th>
+          <th scope="col"><%= text.dishNameEn %></th>
+          <th scope="col"><%= text.categoryCount %></th>
+          <th scope="col"><%= text.editCategory %></th>
+        </tr></thead>
+        <tbody>
+          <% for (const category of categories) { %>
+            <tr>
+              <th scope="row"><%= category.NameNo %></th>
+              <td><%= category.NameEn %></td>
+              <td><%= category.DishCount %></td>
+              <td><a href="/admin/categories/<%= category.Id %>/edit<%= languageQuery %>"><%= text.editCategory %></a></td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</main>
+<%- include('partials/navigation') %>
+<%- include('partials/footer') %>

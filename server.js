@@ -107,7 +107,14 @@ const labels = {
     categoryRequired: 'Velg en kategori.', nameRequired: 'Begge navn må fylles ut (maks 100 tegn).',
     descriptionLength: 'Beskrivelser kan være maks 500 tegn.',
     priceInvalid: 'Skriv en gyldig pris i kroner (maks 21 474 836,47).',
-    portionInvalid: 'Antall biter må være et positivt heltall.'
+    portionInvalid: 'Antall biter må være et positivt heltall.',
+    adminCategories: 'Kategorier', newCategory: 'Ny kategori', editCategory: 'Rediger kategori',
+    categoryCount: 'Antall retter', createCategory: 'Opprett kategori',
+    categoryCreated: 'Kategorien er opprettet.', categoryUpdated: 'Kategorien er lagret.',
+    categoryDuplicate: 'Et navn er allerede i bruk.', categoryInvalid: 'Begge navn må fylles ut (maks 100 tegn).',
+    categoryError: 'Kunne ikke lagre kategorien.', categoryLoadError: 'Kunne ikke hente kategorier.',
+    categoryNotFound: 'Kategorien finnes ikke.', invalidCategoryId: 'Ugyldig kategori-ID.',
+    categoryQuick: 'Opprett ny kategori her', noCategories: 'Ingen kategorier funnet.'
   },
   en: {
     home: 'Home',
@@ -176,7 +183,14 @@ const labels = {
     categoryRequired: 'Choose a category.', nameRequired: 'Both names are required (maximum 100 characters).',
     descriptionLength: 'Descriptions can have up to 500 characters.',
     priceInvalid: 'Enter a valid NOK price (maximum 21,474,836.47).',
-    portionInvalid: 'Pieces must be a positive whole number.'
+    portionInvalid: 'Pieces must be a positive whole number.',
+    adminCategories: 'Categories', newCategory: 'New category', editCategory: 'Edit category',
+    categoryCount: 'Dishes', createCategory: 'Create category',
+    categoryCreated: 'Category created.', categoryUpdated: 'Category saved.',
+    categoryDuplicate: 'A name is already in use.', categoryInvalid: 'Both names are required (maximum 100 characters).',
+    categoryError: 'Could not save the category.', categoryLoadError: 'Could not load categories.',
+    categoryNotFound: 'Category not found.', invalidCategoryId: 'Invalid category ID.',
+    categoryQuick: 'Create a category here', noCategories: 'No categories found.'
   }
 };
 
@@ -552,13 +566,14 @@ app.post('/admin/orders/:id/status', requireAdmin, checkCsrf, async (req, res) =
   }
 });
 
-// Dish forms share one server-side parser. Prices become integer øre from decimal text.
+// Dish management: validate form values before any database write.
 function dishId(value) {
   return typeof value === 'string' && /^[1-9]\d*$/.test(value)
     && Number(value) <= 2147483647 ? Number(value) : null;
 }
 
 function parseDish(body, categories, text) {
+  // Treat unexpected types as empty input, then apply the same limits as the SQL columns.
   const errors = [];
   const nameNo = typeof body.NameNo === 'string' ? body.NameNo.trim() : '';
   const nameEn = typeof body.NameEn === 'string' ? body.NameEn.trim() : '';
@@ -566,6 +581,7 @@ function parseDish(body, categories, text) {
   const descriptionEn = typeof body.DescriptionEn === 'string' ? body.DescriptionEn.trim() : '';
   const categoryId = dishId(body.CategoryId);
   const priceText = typeof body.PriceNok === 'string' ? body.PriceNok.trim() : '';
+  // Split the decimal text so prices are stored as integer øre without floating-point math.
   const priceMatch = /^(\d{1,8})(?:[.,](\d{1,2}))?$/.exec(priceText);
   const priceOre = priceMatch
     ? Number(priceMatch[1]) * 100 + Number((priceMatch[2] || '').padEnd(2, '0')) : null;
@@ -573,10 +589,12 @@ function parseDish(body, categories, text) {
   const pieces = piecesText === '' ? null : dishId(piecesText);
   const available = body.IsAvailable === '1';
 
+  // The category must still exist when the dish is submitted, including after quick creation.
   if (!nameNo || !nameEn || nameNo.length > 100 || nameEn.length > 100) errors.push(text.nameRequired);
   if (descriptionNo.length > 500 || descriptionEn.length > 500) errors.push(text.descriptionLength);
   if (!categoryId || !categories.some(category => category.Id === categoryId)) errors.push(text.categoryRequired);
-  if (priceOre === null || priceOre < 1 || priceOre > 2147483647) errors.push(text.priceInvalid);
+  // Zero is a valid free item; null still means the required price was missing or invalid.
+  if (priceOre === null || priceOre < 0 || priceOre > 2147483647) errors.push(text.priceInvalid);
   if (piecesText !== '' && !pieces) errors.push(text.portionInvalid);
   if (!['0', '1'].includes(body.IsAvailable)) errors.push(text.dishInvalid);
 
@@ -593,6 +611,134 @@ async function dishCategories() {
     'SELECT Id, NameNo, NameEn FROM dbo.Categories ORDER BY Id'
   )).recordset;
 }
+
+// Category management: share validation and responses between full pages and quick creation.
+function categoryNames(body) {
+  const nameNo = typeof body.NameNo === 'string' ? body.NameNo.trim() : '';
+  const nameEn = typeof body.NameEn === 'string' ? body.NameEn.trim() : '';
+  return {
+    nameNo, nameEn,
+    valid: !!nameNo && !!nameEn && nameNo.length <= 100 && nameEn.length <= 100
+  };
+}
+
+function categoryResponse(req, res, status, message, values = {}, created = null) {
+  // The dish form expects JSON; category pages render the form with its entered values.
+  if (req.path.endsWith('/quick')) {
+    return res.status(status).json(created ? { category: created, message } : { error: message });
+  }
+  res.status(status).render('admin-category-form', {
+    title: values.id ? res.locals.text.editCategory : res.locals.text.newCategory,
+    currentPage: '/admin/categories', csrfToken: csrfToken(req),
+    category: values, error: message
+  });
+}
+
+app.get('/admin/categories', requireAdmin, async (req, res) => {
+  let categories = [];
+  let error = null;
+  try {
+    // LEFT JOIN keeps empty categories in the list with a count of zero.
+    categories = (await (await getPool()).request().query(`
+      SELECT c.Id, c.NameNo, c.NameEn, COUNT(d.Id) AS DishCount
+      FROM dbo.Categories AS c
+      LEFT JOIN dbo.Dishes AS d ON d.CategoryId = c.Id
+      GROUP BY c.Id, c.NameNo, c.NameEn
+      ORDER BY c.Id
+    `)).recordset;
+  } catch (err) {
+    console.error('Could not load categories:', err.code || err.name);
+    error = res.locals.text.categoryLoadError;
+  }
+  res.status(error ? 503 : 200).render('admin-categories', {
+    title: res.locals.text.adminCategories, currentPage: '/admin/categories',
+    csrfToken: csrfToken(req), categories, error,
+    success: req.query.saved === 'created' ? res.locals.text.categoryCreated
+      : req.query.saved === 'updated' ? res.locals.text.categoryUpdated : null
+  });
+});
+
+app.get('/admin/categories/new', requireAdmin, (req, res) => {
+  categoryResponse(req, res, 200, null, { NameNo: '', NameEn: '' });
+});
+
+app.get('/admin/categories/:id/edit', requireAdmin, async (req, res) => {
+  const id = dishId(req.params.id);
+  if (!id) return res.status(400).send(res.locals.text.invalidCategoryId);
+  try {
+    const category = (await (await getPool()).request().input('id', sql.Int, id)
+      .query('SELECT Id, NameNo, NameEn FROM dbo.Categories WHERE Id = @id')).recordset[0];
+    if (!category) return res.status(404).send(res.locals.text.categoryNotFound);
+    categoryResponse(req, res, 200, null, { ...category, id });
+  } catch (error) {
+    console.error('Could not load category:', error.code || error.name);
+    res.status(503).send(res.locals.text.categoryLoadError);
+  }
+});
+
+// Lock the name check and write together so two admin requests cannot create the same name.
+async function saveCategory(req, res, editing = false) {
+  const id = editing ? dishId(req.params.id) : null;
+  if (editing && !id) return res.status(400).send(res.locals.text.invalidCategoryId);
+  const names = categoryNames(req.body);
+  const values = { Id: id, id, NameNo: names.nameNo, NameEn: names.nameEn };
+  if (!names.valid) return categoryResponse(req, res, 400, res.locals.text.categoryInvalid, values);
+
+  let transaction;
+  try {
+    transaction = new sql.Transaction(await getPool());
+    await transaction.begin(sql.ISOLATION_LEVEL.SERIALIZABLE);
+    const request = new sql.Request(transaction)
+      .input('id', sql.Int, id)
+      .input('nameNo', sql.NVarChar(100), names.nameNo)
+      .input('nameEn', sql.NVarChar(100), names.nameEn);
+    // An edit must target a current row; its own names are excluded from duplicate checks.
+    if (editing) {
+      const found = await request.query('SELECT Id FROM dbo.Categories WHERE Id = @id');
+      if (!found.recordset.length) {
+        await transaction.rollback();
+        return res.status(404).send(res.locals.text.categoryNotFound);
+      }
+    }
+    const duplicate = await request.query(`
+      SELECT Id FROM dbo.Categories WITH (UPDLOCK, HOLDLOCK)
+      WHERE Id <> COALESCE(@id, -1)
+        AND (LOWER(NameNo) = LOWER(@nameNo) OR LOWER(NameEn) = LOWER(@nameEn))
+    `);
+    if (duplicate.recordset.length) {
+      await transaction.rollback();
+      return categoryResponse(req, res, 409, res.locals.text.categoryDuplicate, values);
+    }
+    let created;
+    if (editing) {
+      await request.query('UPDATE dbo.Categories SET NameNo = @nameNo, NameEn = @nameEn WHERE Id = @id');
+    } else {
+      created = (await request.query(`
+        INSERT INTO dbo.Categories (NameNo, NameEn)
+        OUTPUT INSERTED.Id, INSERTED.NameNo, INSERTED.NameEn
+        VALUES (@nameNo, @nameEn)
+      `)).recordset[0];
+    }
+    await transaction.commit();
+    // Quick creation returns the new ID for the dish selector; full pages redirect to the list.
+    if (req.path.endsWith('/quick')) {
+      return res.status(201).json({ category: created, message: res.locals.text.categoryCreated });
+    }
+    res.redirect(`/admin/categories${res.locals.languageQuery}${res.locals.languageQuery ? '&' : '?'}saved=${editing ? 'updated' : 'created'}`);
+  } catch (error) {
+    if (transaction) {
+      try { await transaction.rollback(); } catch { /* The transaction may already be closed. */ }
+    }
+    console.error('Could not save category:', error.code || error.name);
+    const duplicate = error.number === 2601 || error.number === 2627;
+    categoryResponse(req, res, duplicate ? 409 : 503,
+      duplicate ? res.locals.text.categoryDuplicate : res.locals.text.categoryError, values);
+  }
+}
+
+app.post('/admin/categories', requireAdmin, checkCsrf, (req, res) => saveCategory(req, res));
+app.post('/admin/categories/quick', requireAdmin, checkCsrf, (req, res) => saveCategory(req, res));
+app.post('/admin/categories/:id', requireAdmin, checkCsrf, (req, res) => saveCategory(req, res, true));
 
 function renderDishForm(req, res, { dish, categories, errors = [], status = 200, editing = false }) {
   res.status(status).render('admin-dish-form', {
@@ -613,6 +759,7 @@ app.get('/admin/dishes', requireAdmin, async (req, res) => {
   let dishes = [];
   let error = null;
   try {
+    // Search both names and keep unavailable dishes visible to the administrator.
     categories = await dishCategories();
     dishes = (await (await getPool()).request()
       .input('search', sql.NVarChar(202), `%${search.replace(/[\[%_]/g, '[$&]')}%`)
@@ -678,6 +825,7 @@ async function saveDish(req, res, editing) {
     return res.status(503).send(res.locals.text.dishSaveError);
   }
   const { dish, errors } = parseDish(req.body, categories, res.locals.text);
+  // Re-render invalid input so the administrator can correct it without losing the form.
   if (errors.length) return renderDishForm(req, res, {
     dish: { ...dish, Id: id }, categories, errors, status: 400, editing
   });
@@ -691,6 +839,7 @@ async function saveDish(req, res, editing) {
       .input('priceOre', sql.Int, dish.PriceOre)
       .input('pieces', sql.Int, dish.Pieces)
       .input('available', sql.Bit, dish.IsAvailable);
+    // Update only fields present in this form; image and allergen data stay untouched.
     if (editing) {
       const result = await request.input('id', sql.Int, id).query(`
         UPDATE dbo.Dishes SET CategoryId = @categoryId, NameNo = @nameNo,

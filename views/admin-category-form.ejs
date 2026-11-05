@@ -1,0 +1,18 @@
+<%- include('partials/header') %>
+<main class="admin-page">
+  <%# The same form handles creation and editing; the existing ID selects the action. %>
+  <%- include('partials/admin-controls') %>
+  <h1><%= category.id ? text.editCategory : text.newCategory %></h1>
+  <% if (error) { %><p role="alert" class="admin-errors"><%= error %></p><% } %>
+  <form action="<%= category.id ? `/admin/categories/${category.id}` : '/admin/categories' %><%= languageQuery %>" method="post" class="admin-dish-form">
+    <%# Every write uses the session's CSRF token. %>
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <label for="category-name-no"><%= text.dishNameNo %> *</label>
+    <input id="category-name-no" name="NameNo" value="<%= category.NameNo %>" maxlength="100" required>
+    <label for="category-name-en"><%= text.dishNameEn %> *</label>
+    <input id="category-name-en" name="NameEn" value="<%= category.NameEn %>" maxlength="100" required>
+    <button type="submit"><%= category.id ? text.saveDish : text.createCategory %></button>
+  </form>
+</main>
+<%- include('partials/navigation') %>
+<%- include('partials/footer') %>

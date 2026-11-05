@@ -1,7 +1,9 @@
 <div class="admin-heading">
+  <%# Keep the admin sections visible without changing customer navigation. %>
   <nav class="admin-tabs" aria-label="<%= text.adminNavigation %>">
     <a href="/admin<%= languageQuery %>" <% if (currentPage === '/admin') { %>aria-current="page"<% } %>><%= text.adminOrders %></a>
     <a href="/admin/dishes<%= languageQuery %>" <% if (currentPage === '/admin/dishes') { %>aria-current="page"<% } %>><%= text.adminDishes %></a>
+    <a href="/admin/categories<%= languageQuery %>" <% if (currentPage === '/admin/categories') { %>aria-current="page"<% } %>><%= text.adminCategories %></a>
   </nav>
   <form action="/admin/logout<%= languageQuery %>" method="post">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">

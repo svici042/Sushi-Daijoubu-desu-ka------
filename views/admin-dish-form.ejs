@@ -24,6 +24,16 @@
         <option value="<%= category.Id %>" <% if (category.Id === dish.CategoryId) { %>selected<% } %>><%= language === 'en' ? category.NameEn : category.NameNo %></option>
       <% } %>
     </select>
+    <%# Quick category inputs have no name attributes, so submitting the dish ignores them. %>
+    <fieldset class="admin-quick-category" data-quick-category data-endpoint="/admin/categories/quick<%= languageQuery %>" data-error="<%= text.categoryError %>">
+      <legend><%= text.categoryQuick %></legend>
+      <label for="quick-name-no"><%= text.dishNameNo %></label>
+      <input id="quick-name-no" type="text" maxlength="100" autocomplete="off">
+      <label for="quick-name-en"><%= text.dishNameEn %></label>
+      <input id="quick-name-en" type="text" maxlength="100" autocomplete="off">
+      <button type="button" data-create-category><%= text.createCategory %></button>
+      <p role="status" aria-live="polite" data-category-message></p>
+    </fieldset>
     <label for="price-nok"><%= text.priceNok %> *</label>
     <input id="price-nok" name="PriceNok" value="<%= dish.PriceNok %>" inputmode="decimal" required>
     <label for="pieces"><%= text.portion %></label>
@@ -36,5 +46,6 @@
     <button type="submit"><%= text.saveDish %></button>
   </form>
 </main>
+<script src="/js/admin-category.js" defer></script>
 <%- include('partials/navigation') %>
 <%- include('partials/footer') %>

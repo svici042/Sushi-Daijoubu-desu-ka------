@@ -329,6 +329,20 @@ textarea:focus-visible {
   color: #8c1737;
 }
 
+.admin-quick-category {
+  display: grid;
+  gap: 0.6rem;
+  min-width: 0;
+  margin: 0.5rem 0;
+  padding: 1rem;
+  border: 1px solid #d9d0d8;
+  border-radius: 0.5rem;
+}
+
+.admin-quick-category p {
+  margin: 0;
+}
+
 .placeholder-page {
   max-width: 40rem;
   margin: 4rem auto;
