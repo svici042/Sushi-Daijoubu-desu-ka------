@@ -1,4 +1,4 @@
-# SUSHI Daijoubu desu ka? (大丈夫ですか？)
+﻿# SUSHI Daijoubu desu ka? (å¤§ä¸ˆå¤«ã§ã™ã‹ï¼Ÿ)
 
 Sushi restaurant website.
 
@@ -18,11 +18,11 @@ The website will have a Japanese anime style with some meme humor.
 - Sushi menu with pictures, ingredients and prices
 - Shopping cart and table ordering
 - Order management
-- Admin pages for editing dishes, prices and pictures
+- Admin pages for adding and editing dishes, prices and availability
 - Editable home page content
 - Norwegian and English languages
 
-Norwegian Bokmål will be the default language.
+Norwegian BokmÃ¥l will be the default language.
 
 ## Technologies
 
@@ -40,7 +40,7 @@ Install Node.js 22 or newer, SQL Server, and the ODBC Driver for SQL Server. The
 npm ci
 ```
 
-Copy `.env.example` to `.env` and fill in the SQL Server and admin settings. Follow the commands in `.env.example` to generate your own bcrypt password hash and random session secret. I use `DB_AUTH=sql` with my SQL login. For a local named instance, `DB_SERVER=.\SQLEXPRESS` can be used without setting a port. Run `sql/setup.sql`, then `sql/orders.sql` in SQL Server Management Studio using an account that can create tables. The application login needs SELECT on Dishes, Orders and OrderItems, UPDATE on Orders, and INSERT on Orders and OrderItems.
+Copy `.env.example` to `.env` and fill in the SQL Server and admin settings. Follow the commands in `.env.example` to generate your own bcrypt password hash and random session secret. I use `DB_AUTH=sql` with my SQL login. For a local named instance, `DB_SERVER=.\SQLEXPRESS` can be used without setting a port. Run `sql/setup.sql`, then `sql/orders.sql` in SQL Server Management Studio using an account that can create tables. The application login needs SELECT on Categories, Dishes, Allergens, DishAllergens, Orders and OrderItems; UPDATE on Orders and Dishes; and INSERT on Orders, OrderItems and Dishes. Grant the new Dishes permissions manually if needed.
 
 Admin sessions use Express's memory store for local development. Before production, use a persistent session store and HTTPS; production cookies are marked Secure.
 
@@ -59,4 +59,4 @@ Open http://localhost:3000/ in your browser.
 
 ## Status
 
-The menu reads available dishes and allergens from SQL Server. I can filter and search dishes, switch between Norwegian and English, and choose quantities. The cart saves dish IDs and quantities in the browser. Orders ask for a name and save current prices and items in SQL Server. The protected admin page lists orders and advances their status.
+The menu reads available dishes and allergens from SQL Server. I can filter and search dishes, switch between Norwegian and English, and choose quantities. The cart saves dish IDs and quantities in the browser. Orders ask for a name and save current prices and items in SQL Server. The protected admin pages list orders, advance their status, and manage dishes and availability.

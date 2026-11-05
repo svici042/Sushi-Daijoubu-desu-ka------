@@ -93,7 +93,21 @@ const labels = {
     completed: 'Fullført', newStatus: 'Ny', nextStatus: 'Neste status',
     noOrders: 'Ingen bestillinger funnet.', adminError: 'Kunne ikke hente bestillinger.',
     statusError: 'Kunne ikke oppdatere status.', invalidTransition: 'Ugyldig statusendring.',
-    orderNumber: 'Ordre', orderDetails: 'Vis varer'
+    orderNumber: 'Ordre', orderDetails: 'Vis varer',
+    adminDishes: 'Retter', addDish: 'Legg til rett', editDish: 'Rediger rett',
+    dishNameNo: 'Norsk navn', dishNameEn: 'Engelsk navn',
+    descriptionNo: 'Norsk beskrivelse', descriptionEn: 'Engelsk beskrivelse',
+    category: 'Kategori', priceNok: 'Pris (kr)', portion: 'Antall biter',
+    availability: 'Tilgjengelig', available: 'Tilgjengelig', notAvailable: 'Utilgjengelig',
+    findDishes: 'Søk i navn', filterDishes: 'Filtrer', saveDish: 'Lagre rett',
+    dishSaved: 'Retten er lagret.', dishCreated: 'Retten er lagt til.',
+    noAdminDishes: 'Ingen retter funnet.', dishLoadError: 'Kunne ikke hente retter.',
+    dishSaveError: 'Kunne ikke lagre retten.', dishInvalid: 'Kontroller feltene og prøv igjen.',
+    dishNotFound: 'Retten finnes ikke.', invalidDishId: 'Ugyldig rett-ID.',
+    categoryRequired: 'Velg en kategori.', nameRequired: 'Begge navn må fylles ut (maks 100 tegn).',
+    descriptionLength: 'Beskrivelser kan være maks 500 tegn.',
+    priceInvalid: 'Skriv en gyldig pris i kroner (maks 21 474 836,47).',
+    portionInvalid: 'Antall biter må være et positivt heltall.'
   },
   en: {
     home: 'Home',
@@ -148,7 +162,21 @@ const labels = {
     completed: 'Completed', newStatus: 'New', nextStatus: 'Next status',
     noOrders: 'No orders found.', adminError: 'Could not load orders.',
     statusError: 'Could not update status.', invalidTransition: 'Invalid status change.',
-    orderNumber: 'Order', orderDetails: 'Show items'
+    orderNumber: 'Order', orderDetails: 'Show items',
+    adminDishes: 'Dishes', addDish: 'Add dish', editDish: 'Edit dish',
+    dishNameNo: 'Norwegian name', dishNameEn: 'English name',
+    descriptionNo: 'Norwegian description', descriptionEn: 'English description',
+    category: 'Category', priceNok: 'Price (NOK)', portion: 'Pieces',
+    availability: 'Availability', available: 'Available', notAvailable: 'Unavailable',
+    findDishes: 'Search names', filterDishes: 'Filter', saveDish: 'Save dish',
+    dishSaved: 'Dish saved.', dishCreated: 'Dish added.',
+    noAdminDishes: 'No dishes found.', dishLoadError: 'Could not load dishes.',
+    dishSaveError: 'Could not save the dish.', dishInvalid: 'Check the fields and try again.',
+    dishNotFound: 'Dish not found.', invalidDishId: 'Invalid dish ID.',
+    categoryRequired: 'Choose a category.', nameRequired: 'Both names are required (maximum 100 characters).',
+    descriptionLength: 'Descriptions can have up to 500 characters.',
+    priceInvalid: 'Enter a valid NOK price (maximum 21,474,836.47).',
+    portionInvalid: 'Pieces must be a positive whole number.'
   }
 };
 
@@ -521,6 +549,193 @@ app.post('/admin/orders/:id/status', requireAdmin, checkCsrf, async (req, res) =
   } catch (error) {
     console.error('Could not update order status:', error.code || error.name);
     res.status(503).send(res.locals.text.statusError);
+  }
+});
+
+// Dish forms share one server-side parser. Prices become integer øre from decimal text.
+function dishId(value) {
+  return typeof value === 'string' && /^[1-9]\d*$/.test(value)
+    && Number(value) <= 2147483647 ? Number(value) : null;
+}
+
+function parseDish(body, categories, text) {
+  const errors = [];
+  const nameNo = typeof body.NameNo === 'string' ? body.NameNo.trim() : '';
+  const nameEn = typeof body.NameEn === 'string' ? body.NameEn.trim() : '';
+  const descriptionNo = typeof body.DescriptionNo === 'string' ? body.DescriptionNo.trim() : '';
+  const descriptionEn = typeof body.DescriptionEn === 'string' ? body.DescriptionEn.trim() : '';
+  const categoryId = dishId(body.CategoryId);
+  const priceText = typeof body.PriceNok === 'string' ? body.PriceNok.trim() : '';
+  const priceMatch = /^(\d{1,8})(?:[.,](\d{1,2}))?$/.exec(priceText);
+  const priceOre = priceMatch
+    ? Number(priceMatch[1]) * 100 + Number((priceMatch[2] || '').padEnd(2, '0')) : null;
+  const piecesText = typeof body.Pieces === 'string' ? body.Pieces.trim() : '';
+  const pieces = piecesText === '' ? null : dishId(piecesText);
+  const available = body.IsAvailable === '1';
+
+  if (!nameNo || !nameEn || nameNo.length > 100 || nameEn.length > 100) errors.push(text.nameRequired);
+  if (descriptionNo.length > 500 || descriptionEn.length > 500) errors.push(text.descriptionLength);
+  if (!categoryId || !categories.some(category => category.Id === categoryId)) errors.push(text.categoryRequired);
+  if (priceOre === null || priceOre < 1 || priceOre > 2147483647) errors.push(text.priceInvalid);
+  if (piecesText !== '' && !pieces) errors.push(text.portionInvalid);
+  if (!['0', '1'].includes(body.IsAvailable)) errors.push(text.dishInvalid);
+
+  return {
+    errors,
+    dish: { NameNo: nameNo, NameEn: nameEn, DescriptionNo: descriptionNo,
+      DescriptionEn: descriptionEn, CategoryId: categoryId, PriceOre: priceOre,
+      PriceNok: priceText, Pieces: pieces, IsAvailable: available }
+  };
+}
+
+async function dishCategories() {
+  return (await (await getPool()).request().query(
+    'SELECT Id, NameNo, NameEn FROM dbo.Categories ORDER BY Id'
+  )).recordset;
+}
+
+function renderDishForm(req, res, { dish, categories, errors = [], status = 200, editing = false }) {
+  res.status(status).render('admin-dish-form', {
+    title: editing ? res.locals.text.editDish : res.locals.text.addDish,
+    currentPage: '/admin/dishes', csrfToken: csrfToken(req),
+    dish, categories, errors, editing
+  });
+}
+
+app.get('/admin/dishes', requireAdmin, async (req, res) => {
+  const search = typeof req.query.search === 'string' ? req.query.search.trim().slice(0, 100) : '';
+  const category = dishId(req.query.category);
+  const query = new URLSearchParams();
+  if (search) query.set('search', search);
+  if (category) query.set('category', category);
+  res.locals.languageSwitchPath = `/admin/dishes${query.size ? `?${query}` : ''}`;
+  let categories = [];
+  let dishes = [];
+  let error = null;
+  try {
+    categories = await dishCategories();
+    dishes = (await (await getPool()).request()
+      .input('search', sql.NVarChar(202), `%${search.replace(/[\[%_]/g, '[$&]')}%`)
+      .input('category', sql.Int, category)
+      .query(`SELECT d.Id, d.NameNo, d.NameEn, d.PriceOre, d.Pieces, d.IsAvailable,
+                     c.NameNo AS CategoryNo, c.NameEn AS CategoryEn
+              FROM dbo.Dishes AS d
+              JOIN dbo.Categories AS c ON c.Id = d.CategoryId
+              WHERE (@category IS NULL OR d.CategoryId = @category)
+                AND (d.NameNo LIKE @search OR d.NameEn LIKE @search)
+              ORDER BY d.CategoryId, d.Id`)).recordset;
+  } catch (err) {
+    console.error('Could not load admin dishes:', err.code || err.name);
+    error = res.locals.text.dishLoadError;
+  }
+  res.status(error ? 503 : 200).render('admin-dishes', {
+    title: res.locals.text.adminDishes, currentPage: '/admin/dishes',
+    csrfToken: csrfToken(req), categories, dishes, search,
+    category, error, money: priceFormatter,
+    success: req.query.saved === 'created' ? res.locals.text.dishCreated
+      : req.query.saved === 'updated' ? res.locals.text.dishSaved : null
+  });
+});
+
+app.get('/admin/dishes/new', requireAdmin, async (req, res) => {
+  try {
+    renderDishForm(req, res, {
+      dish: { NameNo: '', NameEn: '', DescriptionNo: '', DescriptionEn: '',
+        CategoryId: null, PriceNok: '', Pieces: null, IsAvailable: true },
+      categories: await dishCategories()
+    });
+  } catch (error) {
+    console.error('Could not load dish form:', error.code || error.name);
+    res.status(503).send(res.locals.text.dishLoadError);
+  }
+});
+
+app.get('/admin/dishes/:id/edit', requireAdmin, async (req, res) => {
+  const id = dishId(req.params.id);
+  if (!id) return res.status(400).send(res.locals.text.invalidDishId);
+  try {
+    const categories = await dishCategories();
+    const dish = (await (await getPool()).request().input('id', sql.Int, id)
+      .query(`SELECT Id, CategoryId, NameNo, NameEn, DescriptionNo, DescriptionEn,
+                     PriceOre, Pieces, IsAvailable FROM dbo.Dishes WHERE Id = @id`)).recordset[0];
+    if (!dish) return res.status(404).send(res.locals.text.dishNotFound);
+    dish.PriceNok = `${Math.floor(dish.PriceOre / 100)},${String(dish.PriceOre % 100).padStart(2, '0')}`;
+    renderDishForm(req, res, { dish, categories, editing: true });
+  } catch (error) {
+    console.error('Could not load dish:', error.code || error.name);
+    res.status(503).send(res.locals.text.dishLoadError);
+  }
+});
+
+async function saveDish(req, res, editing) {
+  const id = editing ? dishId(req.params.id) : null;
+  if (editing && !id) return res.status(400).send(res.locals.text.invalidDishId);
+  let categories;
+  try {
+    categories = await dishCategories();
+  } catch (error) {
+    console.error('Could not load categories:', error.code || error.name);
+    return res.status(503).send(res.locals.text.dishSaveError);
+  }
+  const { dish, errors } = parseDish(req.body, categories, res.locals.text);
+  if (errors.length) return renderDishForm(req, res, {
+    dish: { ...dish, Id: id }, categories, errors, status: 400, editing
+  });
+  try {
+    const request = (await getPool()).request()
+      .input('categoryId', sql.Int, dish.CategoryId)
+      .input('nameNo', sql.NVarChar(100), dish.NameNo)
+      .input('nameEn', sql.NVarChar(100), dish.NameEn)
+      .input('descriptionNo', sql.NVarChar(500), dish.DescriptionNo || null)
+      .input('descriptionEn', sql.NVarChar(500), dish.DescriptionEn || null)
+      .input('priceOre', sql.Int, dish.PriceOre)
+      .input('pieces', sql.Int, dish.Pieces)
+      .input('available', sql.Bit, dish.IsAvailable);
+    if (editing) {
+      const result = await request.input('id', sql.Int, id).query(`
+        UPDATE dbo.Dishes SET CategoryId = @categoryId, NameNo = @nameNo,
+          NameEn = @nameEn, DescriptionNo = @descriptionNo,
+          DescriptionEn = @descriptionEn, PriceOre = @priceOre,
+          Pieces = @pieces, IsAvailable = @available
+        WHERE Id = @id
+      `);
+      if (result.rowsAffected[0] !== 1) return res.status(404).send(res.locals.text.dishNotFound);
+    } else {
+      await request.query(`
+        INSERT INTO dbo.Dishes (CategoryId, NameNo, NameEn, DescriptionNo,
+          DescriptionEn, PriceOre, Pieces, ImagePath, IsAvailable, AllergensVerified)
+        VALUES (@categoryId, @nameNo, @nameEn, @descriptionNo,
+          @descriptionEn, @priceOre, @pieces, NULL, @available, 0)
+      `);
+    }
+    res.redirect(`/admin/dishes${res.locals.languageQuery}${res.locals.languageQuery ? '&' : '?'}saved=${editing ? 'updated' : 'created'}`);
+  } catch (error) {
+    console.error('Could not save dish:', error.code || error.name);
+    renderDishForm(req, res, {
+      dish: { ...dish, Id: id }, categories, errors: [res.locals.text.dishSaveError],
+      status: 503, editing
+    });
+  }
+}
+
+app.post('/admin/dishes', requireAdmin, checkCsrf, (req, res) => saveDish(req, res, false));
+app.post('/admin/dishes/:id', requireAdmin, checkCsrf, (req, res) => saveDish(req, res, true));
+
+app.post('/admin/dishes/:id/availability', requireAdmin, checkCsrf, async (req, res) => {
+  const id = dishId(req.params.id);
+  if (!id || !['0', '1'].includes(req.body.IsAvailable)) {
+    return res.status(400).send(res.locals.text.dishInvalid);
+  }
+  try {
+    const result = await (await getPool()).request()
+      .input('id', sql.Int, id)
+      .input('available', sql.Bit, req.body.IsAvailable === '1')
+      .query('UPDATE dbo.Dishes SET IsAvailable = @available WHERE Id = @id');
+    if (result.rowsAffected[0] !== 1) return res.status(404).send(res.locals.text.dishNotFound);
+    res.redirect(`/admin/dishes${res.locals.languageQuery}`);
+  } catch (error) {
+    console.error('Could not change dish availability:', error.code || error.name);
+    res.status(503).send(res.locals.text.dishSaveError);
   }
 });
 

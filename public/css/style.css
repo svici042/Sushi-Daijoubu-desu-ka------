@@ -24,7 +24,9 @@ a:focus-visible {
 }
 
 button:focus-visible,
-input:focus-visible {
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
   outline: 3px solid #d879a0;
   outline-offset: 3px;
 }
@@ -244,6 +246,87 @@ input:focus-visible {
 
 .admin-order summary {
   cursor: pointer;
+}
+
+/* Dish management shares the admin palette and scrolls on narrow screens. */
+.admin-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.admin-tabs a[aria-current="page"] {
+  font-weight: bold;
+  text-decoration-thickness: 3px;
+}
+
+.admin-action {
+  padding: 0.6rem 0.8rem;
+  border-radius: 0.5rem;
+  color: #fff;
+  background: #352c49;
+}
+
+.admin-table-scroll {
+  overflow-x: auto;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+}
+
+.admin-table th,
+.admin-table td {
+  padding: 0.8rem;
+  border-bottom: 1px solid #d9d0d8;
+  text-align: left;
+  vertical-align: top;
+}
+
+.admin-table small {
+  color: #555;
+}
+
+.admin-availability {
+  display: grid;
+  gap: 0.4rem;
+  justify-items: start;
+}
+
+.admin-dish-form {
+  display: grid;
+  gap: 0.6rem;
+  max-width: 36rem;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  background: #fff;
+}
+
+.admin-dish-form input,
+.admin-dish-form select,
+.admin-dish-form textarea {
+  width: 100%;
+  padding: 0.6rem;
+  border: 2px solid #352c49;
+  border-radius: 0.5rem;
+  font: inherit;
+}
+
+.admin-dish-form textarea {
+  min-height: 5rem;
+  resize: vertical;
+}
+
+.admin-dish-form button {
+  justify-self: start;
+  margin-top: 0.6rem;
+}
+
+.admin-errors {
+  color: #8c1737;
 }
 
 .placeholder-page {

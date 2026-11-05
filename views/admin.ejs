@@ -1,12 +1,7 @@
 <%- include('partials/header') %>
 <main class="admin-page">
-  <div class="admin-heading">
-    <h1><%= text.adminOrders %></h1>
-    <form action="/admin/logout<%= languageQuery %>" method="post">
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-      <button type="submit"><%= text.logout %></button>
-    </form>
-  </div>
+  <%- include('partials/admin-controls') %>
+  <h1><%= text.adminOrders %></h1>
   <p><%= text.newOrders %>: <strong><%= newCount %></strong></p>
   <form action="/admin" method="get" class="admin-form">
     <% if (language === 'en') { %><input type="hidden" name="lang" value="en"><% } %>

@@ -1,0 +1,40 @@
+<%- include('partials/header') %>
+<main class="admin-page">
+  <%- include('partials/admin-controls') %>
+  <h1><%= editing ? text.editDish : text.addDish %></h1>
+  <% if (errors.length) { %>
+    <div role="alert" class="admin-errors">
+      <ul><% for (const error of errors) { %><li><%= error %></li><% } %></ul>
+    </div>
+  <% } %>
+  <form action="<%= editing ? `/admin/dishes/${dish.Id}` : '/admin/dishes' %><%= languageQuery %>" method="post" class="admin-dish-form">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <label for="name-no"><%= text.dishNameNo %> *</label>
+    <input id="name-no" name="NameNo" value="<%= dish.NameNo %>" maxlength="100" required>
+    <label for="name-en"><%= text.dishNameEn %> *</label>
+    <input id="name-en" name="NameEn" value="<%= dish.NameEn %>" maxlength="100" required>
+    <label for="description-no"><%= text.descriptionNo %></label>
+    <textarea id="description-no" name="DescriptionNo" maxlength="500"><%= dish.DescriptionNo || '' %></textarea>
+    <label for="description-en"><%= text.descriptionEn %></label>
+    <textarea id="description-en" name="DescriptionEn" maxlength="500"><%= dish.DescriptionEn || '' %></textarea>
+    <label for="category-id"><%= text.category %> *</label>
+    <select id="category-id" name="CategoryId" required>
+      <option value=""><%= text.categoryRequired %></option>
+      <% for (const category of categories) { %>
+        <option value="<%= category.Id %>" <% if (category.Id === dish.CategoryId) { %>selected<% } %>><%= language === 'en' ? category.NameEn : category.NameNo %></option>
+      <% } %>
+    </select>
+    <label for="price-nok"><%= text.priceNok %> *</label>
+    <input id="price-nok" name="PriceNok" value="<%= dish.PriceNok %>" inputmode="decimal" required>
+    <label for="pieces"><%= text.portion %></label>
+    <input id="pieces" name="Pieces" value="<%= dish.Pieces ?? '' %>" inputmode="numeric">
+    <label for="available"><%= text.availability %></label>
+    <select id="available" name="IsAvailable">
+      <option value="1" <% if (dish.IsAvailable) { %>selected<% } %>><%= text.available %></option>
+      <option value="0" <% if (!dish.IsAvailable) { %>selected<% } %>><%= text.notAvailable %></option>
+    </select>
+    <button type="submit"><%= text.saveDish %></button>
+  </form>
+</main>
+<%- include('partials/navigation') %>
+<%- include('partials/footer') %>

@@ -1,0 +1,61 @@
+<%- include('partials/header') %>
+<main class="admin-page">
+  <%- include('partials/admin-controls') %>
+  <div class="admin-heading">
+    <h1><%= text.adminDishes %></h1>
+    <a class="admin-action" href="/admin/dishes/new<%= languageQuery %>"><%= text.addDish %></a>
+  </div>
+  <form action="/admin/dishes" method="get" class="admin-form">
+    <% if (language === 'en') { %><input type="hidden" name="lang" value="en"><% } %>
+    <label for="dish-search"><%= text.findDishes %></label>
+    <input id="dish-search" name="search" value="<%= search %>" maxlength="100">
+    <label for="dish-category"><%= text.category %></label>
+    <select id="dish-category" name="category">
+      <option value=""><%= text.all %></option>
+      <% for (const item of categories) { %>
+        <option value="<%= item.Id %>" <% if (category === item.Id) { %>selected<% } %>><%= language === 'en' ? item.NameEn : item.NameNo %></option>
+      <% } %>
+    </select>
+    <button type="submit"><%= text.filterDishes %></button>
+  </form>
+  <% if (success) { %><p role="status"><%= success %></p><% } %>
+  <% if (error) { %>
+    <p role="alert"><%= error %></p>
+  <% } else if (!dishes.length) { %>
+    <p><%= text.noAdminDishes %></p>
+  <% } else { %>
+    <div class="admin-table-scroll">
+      <table class="admin-table">
+        <thead><tr>
+          <th scope="col"><%= text.dishNameNo %> / <%= text.dishNameEn %></th>
+          <th scope="col"><%= text.category %></th>
+          <th scope="col"><%= text.priceNok %></th>
+          <th scope="col"><%= text.portion %></th>
+          <th scope="col"><%= text.availability %></th>
+          <th scope="col"><%= text.editDish %></th>
+        </tr></thead>
+        <tbody>
+          <% for (const dish of dishes) { %>
+            <tr>
+              <th scope="row"><%= dish.NameNo %><br><small><%= dish.NameEn %></small></th>
+              <td><%= language === 'en' ? dish.CategoryEn : dish.CategoryNo %></td>
+              <td><%= money.format(dish.PriceOre / 100) %></td>
+              <td><%= dish.Pieces ?? '—' %></td>
+              <td>
+                <form action="/admin/dishes/<%= dish.Id %>/availability<%= languageQuery %>" method="post" class="admin-availability">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                  <input type="hidden" name="IsAvailable" value="<%= dish.IsAvailable ? '0' : '1' %>">
+                  <span><%= dish.IsAvailable ? text.available : text.notAvailable %></span>
+                  <button type="submit"><%= dish.IsAvailable ? text.notAvailable : text.available %></button>
+                </form>
+              </td>
+              <td><a href="/admin/dishes/<%= dish.Id %>/edit<%= languageQuery %>"><%= text.editDish %></a></td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</main>
+<%- include('partials/navigation') %>
+<%- include('partials/footer') %>

@@ -1,0 +1,10 @@
+<div class="admin-heading">
+  <nav class="admin-tabs" aria-label="<%= text.adminNavigation %>">
+    <a href="/admin<%= languageQuery %>" <% if (currentPage === '/admin') { %>aria-current="page"<% } %>><%= text.adminOrders %></a>
+    <a href="/admin/dishes<%= languageQuery %>" <% if (currentPage === '/admin/dishes') { %>aria-current="page"<% } %>><%= text.adminDishes %></a>
+  </nav>
+  <form action="/admin/logout<%= languageQuery %>" method="post">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <button type="submit"><%= text.logout %></button>
+  </form>
+</div>
